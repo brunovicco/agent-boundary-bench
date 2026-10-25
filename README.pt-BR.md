@@ -1,10 +1,15 @@
 # Agent Boundary Bench
 
+[![quality](https://github.com/brunovicco/agent-boundary-bench/actions/workflows/quality.yml/badge.svg)](https://github.com/brunovicco/agent-boundary-bench/actions/workflows/quality.yml)
+[![release](https://img.shields.io/badge/release-v0.2.0-blue)](docs/RELEASE_0.2.0.md)
+[![python](https://img.shields.io/badge/python-3.12--3.14-3776AB)](pyproject.toml)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 Laboratório reproduzível para investigar o custo de cruzar fronteiras de processo e protocolo. A família de delegação compara Python em processo, HTTP convencional e A2A 1.0 JSON-RPC. A família de acesso a ferramentas compara MCP v2 em processo, stdio e Streamable HTTP. Todas executam o mesmo kernel determinístico de crédito corporativo sintético.
 
-[README completo em inglês](README.md) · [Metodologia](docs/METHODOLOGY.md) · [Compatibilidade](docs/COMPATIBILITY.md) · [Validação realizada](VALIDATION.md)
+[README completo em inglês](README.md) · [Notas da v0.2.0](docs/RELEASE_0.2.0.md) · [Metodologia](docs/METHODOLOGY.md) · [Compatibilidade](docs/COMPATIBILITY.md) · [Validação realizada](VALIDATION.md)
 
-Não usa LLM, dados financeiros reais, chaves comerciais ou banco de dados. A v0.2.0 inclui tools/resources MCP, fan-out/fan-in limitado e amplificação controlada de contexto e chamadas. Os papéis de especialistas continuam sintéticos; o laboratório não mede automaticamente autonomia de agentes nem benefícios de isolamento sob falha.
+Não usa LLM, dados financeiros reais, chaves comerciais ou banco de dados. A versão atual, v0.2.0, inclui tools/resources MCP, fan-out/fan-in limitado e amplificação controlada de contexto e chamadas. Os papéis de especialistas continuam sintéticos; o laboratório não mede automaticamente autonomia de agentes nem benefícios de isolamento sob falha.
 
 | Cenário | Fronteira | Especialista remoto |
 |---|---|---|
@@ -71,7 +76,7 @@ docker compose --profile tools run --rm verify
 docker compose down --remove-orphans
 ```
 
-HTTP, A2A e MCP Streamable HTTP usam a mesma imagem e limites. O A2A anuncia o endereço interno `a2a:8100`; o MCP atende em `mcp:8100/mcp`. `verify` acessa os três serviços com seus clientes públicos e compara o resultado de negócio. O harness nativo usa subprocessos, não esses containers.
+HTTP, A2A e MCP Streamable HTTP usam a mesma imagem e limites. O A2A anuncia o endereço interno `a2a:8100`; o MCP atende em `mcp:8100/mcp`. `verify` acessa os três serviços com seus clientes públicos e compara o resultado de negócio. Build, health checks e equivalência funcional do Compose foram validados no macOS; o GitHub Actions executa a mesma topologia funcional sem publicar tempos de runners compartilhados. O harness nativo usa subprocessos, não esses containers.
 
 Para k6, execute `uv run abb gateway --scenario a2a` em um terminal e, em outro, `ABB_RATE=20 ABB_DURATION=10s k6 run k6/arrival.js`. A configuração usa chegadas constantes independentes das respostas. Essa medição acrescenta uma entrada HTTP uniforme no supervisor; não misture seus números com os do harness nativo. O README em inglês mostra a gravação dos dados brutos do k6.
 
@@ -91,4 +96,6 @@ O objetivo é subsidiar decisões entre monólito modular, serviços e topologia
 
 O piloto MCP real executou 120 rodadas e concluiu 1.200/1.200 requisições sem erros, timeouts ou descartes. Na condição sem telemetria, sem cópias de contexto e sem leituras de resources, a mediana dos P50 por rodada foi 3,110 ms para dispatch direto, 5,842 ms para stdio e 6,315 ms para Streamable HTTP (cinco rodadas, 50 amostras por fronteira). Duas leituras não cacheadas por especialista elevaram as medianas observadas nas três fronteiras. São resultados curtos em host compartilhado: validam o caminho experimental, mas não demonstram capacidade sustentada nem substituição entre MCP e A2A.
 
-Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md) e as [regras de contribuição](CONTRIBUTING.md). O projeto permanece privado até autorização para publicação.
+Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md), as [notas da v0.2.0](docs/RELEASE_0.2.0.md) e as [regras de contribuição](CONTRIBUTING.md).
+
+O repositório público canônico é [brunovicco/agent-boundary-bench](https://github.com/brunovicco/agent-boundary-bench). Bundles locais são apenas artefatos de recuperação e não substituem o remote Git oficial.

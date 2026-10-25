@@ -8,10 +8,11 @@ functional. Native quality gates pass on both platforms. Docker Compose was buil
 successfully on the macOS Docker host: the HTTP, A2A and MCP services became healthy, the
 verification container confirmed functional equivalence, and Compose shut down cleanly.
 
-Remote GitHub Actions acceptance remains pending until the repository is published. The
-connected GitHub account is `brunovicco`; the repository search performed before publication
-returned no existing `agent-boundary-bench`. Public publication was subsequently authorized by
-the owner, but this record does not claim that a remote push or CI execution has occurred.
+The canonical repository is public at
+[brunovicco/agent-boundary-bench](https://github.com/brunovicco/agent-boundary-bench). GitHub
+Actions passed the native quality and Compose functional release gate at commit `99a5979` in
+[run 40230391324](https://github.com/brunovicco/agent-boundary-bench/actions/runs/40230391324).
+Shared-runner timings are never promoted as comparable benchmark results.
 
 The short smoke/pilot campaigns validate the experimental path and provide bounded observations.
 They do not establish sustained capacity, fault isolation or a general architecture ranking.
@@ -70,10 +71,32 @@ Observed results:
 - The verification container completed with:
   `HTTP, A2A and MCP Streamable HTTP services are functionally equivalent`.
 - The three service containers and the Compose network were removed cleanly.
+- Commit `99a5979` replaced the package-loading health command with a lightweight standard-library
+  HTTP probe after the first public CI run exposed a runner-speed-dependent false negative.
 
 This validates container construction, health checks, service wiring and business-result
 equivalence on the tested same-host Docker topology. It is not a container performance campaign,
 cross-host network test or evidence of failure isolation.
+
+### Public GitHub Actions validation
+
+The first public workflow execution at commit `742ef24` provided useful independent evidence:
+
+- The `quality` job passed dependency installation, strict quality gates, fixture validation and
+  functional smoke runs for all six scenarios.
+- The `compose` image build succeeded and HTTP/A2A became healthy, but MCP exceeded the original
+  health-probe budget on the shared runner. The verification step was correctly skipped.
+- The same topology had passed on macOS. Investigation identified the health probe itself as
+  unnecessarily expensive because it loaded the complete CLI package for every attempt.
+- Commit `99a5979` changed only the Compose health command to a lightweight `urllib.request`
+  probe. The corrected topology then passed locally with all three services healthy and the
+  equivalence verifier successful.
+- The follow-up public workflow
+  [run 40230391324](https://github.com/brunovicco/agent-boundary-bench/actions/runs/40230391324)
+  completed successfully at `99a5979`; both `quality` and `compose` passed.
+
+See the [quality workflow](https://github.com/brunovicco/agent-boundary-bench/actions/workflows/quality.yml)
+for the live status. CI remains a functional gate; its latency is not benchmark evidence.
 
 Tests use real native sockets/pipes and official SDK clients/servers. They cover all six
 adapters, 1/16/128 KiB payloads, 0/50/250 ms requested waits, sequential/concurrent execution,
@@ -130,12 +153,10 @@ study and six ADRs. Quality/build logs are under `docs/validation/`. Reports der
 from raw data; missing or tampered samples are rejected. No LLM, commercial key or real
 financial data was used.
 
-Remaining work before claiming complete public-project validation:
+Remaining work before claiming broader experimental validation:
 
-1. Publish the authorized public GitHub repository.
-2. Confirm the configured GitHub Actions workflow passes on the remote runner.
-3. Run longer isolated and repeated campaigns before article-level capacity conclusions.
-4. Implement v0.3 fault injection, retry, backpressure and resource-isolation treatments as
+1. Run longer isolated and repeated campaigns before article-level capacity conclusions.
+2. Implement v0.3 fault injection, retry, backpressure and resource-isolation treatments as
    separately controlled experiments.
 
 The complete Git history can be restored with:
@@ -144,5 +165,5 @@ The complete Git history can be restored with:
 git clone --origin export agent-boundary-bench-v0.2.0.bundle agent-boundary-bench
 ```
 
-The bundle is a recovery/export artifact, not the eventual GitHub remote. Public visibility was
-explicitly authorized by the repository owner on 2026-10-25.
+The bundle is a recovery/export artifact, not the normal Git remote. The public repository was
+created and populated by the owner on 2026-10-25.

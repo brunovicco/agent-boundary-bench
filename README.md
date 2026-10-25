@@ -1,10 +1,15 @@
 # Agent Boundary Bench
 
+[![quality](https://github.com/brunovicco/agent-boundary-bench/actions/workflows/quality.yml/badge.svg)](https://github.com/brunovicco/agent-boundary-bench/actions/workflows/quality.yml)
+[![release](https://img.shields.io/badge/release-v0.2.0-blue)](docs/RELEASE_0.2.0.md)
+[![python](https://img.shields.io/badge/python-3.12--3.14-3776AB)](pyproject.toml)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A reproducible laboratory asking: **what changes when the same operation crosses a process and protocol boundary?** Synthetic corporate credit analysis runs through delegation boundaries (in-process Python, conventional HTTP and A2A JSON-RPC) and separate MCP tool-access boundaries (SDK direct dispatch, stdio and Streamable HTTP). No LLM, commercial key, database or real financial data is used.
 
-[Português](README.pt-BR.md) · [Methodology](docs/METHODOLOGY.md) · [Compatibility research](docs/COMPATIBILITY.md) · [Validation](VALIDATION.md)
+[Português](README.pt-BR.md) · [v0.2.0 release notes](docs/RELEASE_0.2.0.md) · [Methodology](docs/METHODOLOGY.md) · [Compatibility research](docs/COMPATIBILITY.md) · [Validation](VALIDATION.md)
 
-**v0.2.0 implementation:** the v0.1 delegation laboratory plus official MCP Python SDK v2 tools/resources, bounded generalized fan-out/fan-in and controlled context/access amplification. See `VALIDATION.md` for exactly what ran. A smoke or pilot result does not establish saturation or a general architecture ranking.
+**Current release: v0.2.0.** It extends the v0.1 delegation laboratory with official MCP Python SDK v2 tools/resources, bounded generalized fan-out/fan-in and controlled context/access amplification. See [the release notes](docs/RELEASE_0.2.0.md) for the delivered scope and [the validation record](VALIDATION.md) for exactly what ran. A smoke or pilot result does not establish saturation or a general architecture ranking.
 
 ## The experiment
 
@@ -52,7 +57,7 @@ These require matched conditions and repetitions. An artificial async wait model
 
 ## Quick start
 
-Requirements: Python 3.12–3.14 and uv 0.13.4 or compatible. Python 3.12.14 was used for the recorded validation. Installation needs network access; basic experiments work offline after dependencies are cached/installed.
+Requirements: Python 3.12–3.14 and uv 0.13.4 or compatible. The release was validated with Python 3.12.14 on Linux and 3.12.13 on macOS. Installation needs network access; basic experiments work offline after dependencies are cached/installed.
 
 ```bash
 uv sync --frozen --all-groups
@@ -106,7 +111,7 @@ docker compose images --format json > results/container-images.json
 docker compose down --remove-orphans
 ```
 
-HTTP, A2A and MCP Streamable HTTP use the same image, one worker, 1 CPU and 512 MiB limits. A2A advertises `http://a2a:8100/rpc` inside Compose; MCP is available at `http://mcp:8100/mcp`. `verify` executes all three public protocol clients and compares their business results. Native `abb run` intentionally uses native subprocesses, not these containers; never relabel a native result as a Docker measurement. Save actual built image IDs before any separately designed container campaign.
+HTTP, A2A and MCP Streamable HTTP use the same image, one worker, 1 CPU and 512 MiB limits. A2A advertises `http://a2a:8100/rpc` inside Compose; MCP is available at `http://mcp:8100/mcp`. `verify` executes all three public protocol clients and compares their business results. Compose build, health and equivalence checks were validated on macOS; GitHub Actions executes the same functional topology without publishing runner timings. Native `abb run` intentionally uses native subprocesses, not these containers; never relabel a native result as a Docker measurement. Save actual built image IDs before any separately designed container campaign.
 
 ## Independent k6 generator
 
@@ -148,7 +153,6 @@ for Streamable HTTP (five rounds, 50 samples per boundary). Adding two uncached 
 per specialist increased all three observed medians. These short shared-host results validate
 the experiment path; they are not sustained-capacity or protocol-substitutability claims.
 
-
 - A modular monolith can avoid serialization/process boundaries; this alone says nothing about organizational autonomy or fault containment requirements.
 - A service boundary introduces operational components and failure modes. One-host latency does not quantify isolation, independent deployment or cross-region behavior.
 - A2A can standardize agent interfaces and discovery. This experiment uses immediate replies; it does not price durable tasks or streaming.
@@ -160,6 +164,6 @@ Use [real recorded evidence](VALIDATION.md) within its limits. General conclusio
 
 `domain/` owns rules and fixtures; `application/` owns orchestration and ports; `adapters/` owns transport translation; `benchmark/`, `observability/` and `reporting/` own experiment mechanics. `entrypoints/` composes them. Architecture checks enforce inward dependency direction.
 
-Generated from [codex-python-engineering-harness](https://github.com/brunovicco/codex-python-engineering-harness), service profile, with exact provenance in [HARNESS.md](docs/HARNESS.md). [ADRs](docs/adr/) explain design trade-offs. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [ROADMAP.md](docs/ROADMAP.md). CI runs functional checks and never publishes shared-runner timings as comparable benchmarks.
+Generated from [codex-python-engineering-harness](https://github.com/brunovicco/codex-python-engineering-harness), service profile, with exact provenance in [HARNESS.md](docs/HARNESS.md). [ADRs](docs/adr/) explain design trade-offs. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [ROADMAP.md](docs/ROADMAP.md) and the [v0.2.0 release notes](docs/RELEASE_0.2.0.md). CI runs functional checks and never publishes shared-runner timings as comparable benchmarks.
 
-The export includes Git history in `agent-boundary-bench.bundle`. If no remote could be created, restore it with `git clone --origin export agent-boundary-bench.bundle agent-boundary-bench`, then run `bash scripts/publish_private.sh` from that clone with your authenticated GitHub CLI. The script refuses an existing repository and creates only a **private** repository. Public release requires separate authorization.
+The canonical public repository is [brunovicco/agent-boundary-bench](https://github.com/brunovicco/agent-boundary-bench). Recovery bundles are export artifacts only and are not configured as the normal Git remote.

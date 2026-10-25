@@ -2,6 +2,7 @@
 
 ## 0.2.0 — 2026-10-25
 
+- First public release of the reproducible Agent Boundary Bench laboratory.
 - Official MCP Python SDK 2.3.0 client/server with negotiated 2026-07-28 protocol.
 - Separate MCP direct in-process, stdio and Streamable HTTP tool-access scenarios.
 - Deterministic credit-analysis tool and versioned fixture resource with real integration tests.
@@ -10,6 +11,12 @@
 - Compose/CI/CLI and bilingual documentation updated for all six scenarios.
 - A2A and MCP remain explicitly separate experimental responsibility families.
 - Committed MCP smoke/pilot evidence: 144 native rounds, 1,272 successful requests and no errors, timeouts or drops; supplemental k6 smoke covers all three MCP boundaries.
+- Native validation passes on Linux and macOS with 32 tests and more than 92% branch-aware coverage.
+- Docker Compose build, health and HTTP/A2A/MCP equivalence validation completed on macOS.
+- Lightweight container health probes avoid loading the benchmark package and remove shared-runner startup sensitivity.
+- Public GitHub Actions release gate passed for native quality and Compose verification.
+
+See [the v0.2.0 release notes](docs/RELEASE_0.2.0.md) for scope, measured evidence and limitations.
 
 ## 0.1.0 — 2026-10-25
 
