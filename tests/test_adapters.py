@@ -6,13 +6,17 @@ from pathlib import Path
 
 import pytest
 
-from agent_boundary_bench.adapters.mcp import MCP_PROTOCOL_VERSION, MCPDelegate
+from agent_boundary_bench.adapters.mcp import MCP_PROTOCOL_VERSION, MCPDelegate, create_mcp_server
 from agent_boundary_bench.adapters.remote import RemoteDelegate
 from agent_boundary_bench.application.supervisor import NullProbe, supervise
 from agent_boundary_bench.benchmark.models import Config
 from agent_boundary_bench.benchmark.runtime import runtime
 from agent_boundary_bench.domain.credit import AnalysisTask, Specialist, evaluate, fixture
 from agent_boundary_bench.observability import Telemetry
+
+
+def test_mcp_server_fixes_non_measured_logging_level() -> None:
+    assert create_mcp_server().settings.log_level == "WARNING"
 
 
 @pytest.mark.integration

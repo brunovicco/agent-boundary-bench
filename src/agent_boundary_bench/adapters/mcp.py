@@ -64,6 +64,7 @@ def create_mcp_server(telemetry: Telemetry | None = None) -> MCPServer[dict[str,
         version="0.2.0",
         middleware=middleware,
         subscriptions=False,
+        log_level="WARNING",
     )
 
     @server.tool(

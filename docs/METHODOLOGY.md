@@ -42,6 +42,8 @@ k6 supplies an independent `constant-arrival-rate` path through a common supervi
 
 The official high-level stdio client owns its subprocess without exposing its PID through the public API. v0.2 therefore records harness resources but leaves stdio specialist CPU/RSS unavailable instead of discovering it through SDK internals or process-name heuristics.
 
+The MCP server log level is fixed to `WARNING` in every arm. This prevents SDK construction order from enabling per-request INFO logging in only later rounds and adding terminal I/O to selected transport measurements.
+
 Report per-round n, percentiles by linear interpolation, mean/median and all failure counters. Do not infer P99 stability from a handful of smoke observations. Preserve repetitions individually; no unqualified pooling across machines/configurations. Paired telemetry effects are observational differences under matched settings, not a universal OTel price. No difference of averages establishes causal transport decomposition.
 
 ## Instrumentation treatment
