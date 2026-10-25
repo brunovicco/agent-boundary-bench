@@ -1,0 +1,11 @@
+{"elapsed_ms":0.0008010001693037339,"role":"harness","pid":4265,"cpu_seconds":1.12,"rss_bytes":91631616}
+{"elapsed_ms":100.76894400026504,"role":"harness","pid":4265,"cpu_seconds":1.12,"rss_bytes":91631616}
+{"elapsed_ms":201.50802800026213,"role":"harness","pid":4265,"cpu_seconds":1.1300000000000001,"rss_bytes":91631616}
+{"elapsed_ms":302.08438900035617,"role":"harness","pid":4265,"cpu_seconds":1.1300000000000001,"rss_bytes":91631616}
+{"elapsed_ms":403.2401680001385,"role":"harness","pid":4265,"cpu_seconds":1.1400000000000001,"rss_bytes":91631616}
+{"elapsed_ms":503.57114600001296,"role":"harness","pid":4265,"cpu_seconds":1.1500000000000001,"rss_bytes":91631616}
+{"elapsed_ms":604.2347270004029,"role":"harness","pid":4265,"cpu_seconds":1.1600000000000001,"rss_bytes":91635712}
+{"elapsed_ms":704.6902609999961,"role":"harness","pid":4265,"cpu_seconds":1.1600000000000001,"rss_bytes":91635712}
+{"elapsed_ms":805.2980940001362,"role":"harness","pid":4265,"cpu_seconds":1.1700000000000002,"rss_bytes":91635712}
+{"elapsed_ms":905.9046639999906,"role":"harness","pid":4265,"cpu_seconds":1.1700000000000002,"rss_bytes":91635712}
+{"elapsed_ms":1000.3097490002801,"role":"harness","pid":4265,"cpu_seconds":1.1800000000000002,"rss_bytes":91635712}
