@@ -1,0 +1,36 @@
+{
+  "label": "calibration",
+  "seed": 42,
+  "repetitions": 1,
+  "defaults": {
+    "duration": 3,
+    "warmup": 2,
+    "concurrency": 64,
+    "timeout": 5
+  },
+  "matrix": {
+    "scenario": [
+      "local",
+      "http",
+      "a2a"
+    ],
+    "payload_bytes": [
+      16384
+    ],
+    "wait_ms": [
+      250
+    ],
+    "parallel": [
+      false,
+      true
+    ],
+    "telemetry": [
+      false
+    ],
+    "rate": [
+      5,
+      20,
+      50
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: k6/arrival.js
+        output: json (results/k6-final-a2a/raw.jsonl)
+
+     scenarios: (100.00%) 1 scenario, 64 max VUs, 12s max duration (incl. graceful stop):
+              * measured: 5.00 iterations/s for 2s (maxVUs: 64, gracefulStop: 10s)
+
+
+running (01.0s), 00/64 VUs, 5 complete and 0 interrupted iterations
+measured   [  47% ] 00/64 VUs  0.9s/2s  5.00 iters/s
+
+running (02.0s), 00/64 VUs, 10 complete and 0 interrupted iterations
+measured   [  97% ] 00/64 VUs  1.9s/2s  5.00 iters/s
+
+
+  █ THRESHOLDS 
+
+    abb_measured_errors
+    ✓ 'count==0' count=0
+
+    dropped_iterations
+    ✓ 'count==0' count=0
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 11      5.327713/s
+    checks_succeeded...: 100.00% 11 out of 11
+    checks_failed......: 0.00%   0 out of 11
+
+    ✓ valid business contract
+
+    CUSTOM
+    abb_measured_completed.........: 11     5.327713/s
+    abb_measured_errors............: 0      0/s
+    abb_measured_latency...........: avg=19.78ms min=11.86ms med=17.9ms  max=40.72ms p(90)=21.98ms p(95)=31.35ms
+
+    HTTP
+    http_req_duration..............: avg=18.7ms  min=11.17ms med=17.88ms max=40.72ms p(90)=21.64ms p(95)=28.54ms
+      { expected_response:true }...: avg=18.7ms  min=11.17ms med=17.88ms max=40.72ms p(90)=21.64ms p(95)=28.54ms
+    http_req_failed................: 0.00%  0 out of 14
+    http_reqs......................: 14     6.780726/s
+
+    EXECUTION
+    dropped_iterations.............: 0      0/s
+    iteration_duration.............: avg=20.91ms min=12.96ms med=19.31ms max=41.69ms p(90)=23.38ms p(95)=32.54ms
+    iterations.....................: 11     5.327713/s
+    vus............................: 0      min=0       max=0 
+    vus_max........................: 64     min=64      max=64
+
+    NETWORK
+    data_received..................: 12 kB  5.7 kB/s
+    data_sent......................: 1.4 kB 665 B/s
+
+
+
+
+running (02.1s), 00/64 VUs, 11 complete and 0 interrupted iterations
+measured ✓ [ 100% ] 00/64 VUs  2s  5.00 iters/s

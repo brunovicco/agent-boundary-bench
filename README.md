@@ -114,6 +114,13 @@ Telemetry uses public OTel APIs, explicit always-on sampling, W3C trace context 
 
 ## Architectural Decision Insights
 
+[Recorded insights](reports/INSIGHTS.md) include 102 native rounds and 2,820 successful executions,
+plus separate k6 validation. The repeated minimal-work pilot observed median per-round P50s of
+1.150 ms (local), 12.125 ms (HTTP) and 20.218 ms (A2A), telemetry off, 1 KiB, 20 RPS.
+These are five round medians per architecture, not portable or pooled percentiles. An A2A outlier
+and variable telemetry deltas are preserved. The short 50 RPS calibration does not establish saturation.
+
+
 - A modular monolith can avoid serialization/process boundaries; this alone says nothing about organizational autonomy or fault containment requirements.
 - A service boundary introduces operational components and failure modes. One-host latency does not quantify isolation, independent deployment or cross-region behavior.
 - A2A can standardize agent interfaces and discovery. This experiment uses immediate replies; it does not price durable tasks or streaming.
@@ -127,4 +134,4 @@ Use [real recorded evidence](VALIDATION.md) within its limits. General conclusio
 
 Generated from [codex-python-engineering-harness](https://github.com/brunovicco/codex-python-engineering-harness), service profile, with exact provenance in [HARNESS.md](docs/HARNESS.md). [ADRs](docs/adr/) explain design trade-offs. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [ROADMAP.md](docs/ROADMAP.md). CI runs functional checks and never publishes shared-runner timings as comparable benchmarks.
 
-The export includes Git history in `agent-boundary-bench.bundle`. If no remote could be created, restore it with `git clone agent-boundary-bench.bundle agent-boundary-bench`, then run `bash scripts/publish_private.sh` from that clone with your authenticated GitHub CLI. The script refuses an existing repository and creates only a **private** repository. Public release requires separate authorization.
+The export includes Git history in `agent-boundary-bench.bundle`. If no remote could be created, restore it with `git clone --origin export agent-boundary-bench.bundle agent-boundary-bench`, then run `bash scripts/publish_private.sh` from that clone with your authenticated GitHub CLI. The script refuses an existing repository and creates only a **private** repository. Public release requires separate authorization.

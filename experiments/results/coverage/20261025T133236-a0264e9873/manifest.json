@@ -1,0 +1,87 @@
+{
+  "schema_version": "1",
+  "run_id": "20261025T133236-a0264e9873",
+  "started_at": "2026-10-25T13:32:36.204404+00:00",
+  "completed_at": "2026-10-25T13:32:37.213911+00:00",
+  "config": {
+    "scenario": "local",
+    "payload_bytes": 131072,
+    "wait_ms": 0,
+    "parallel": true,
+    "telemetry": false,
+    "rate": 5,
+    "duration": 1.0,
+    "warmup": 1,
+    "concurrency": 64,
+    "timeout": 5.0,
+    "seed": 42,
+    "repetition": 0,
+    "label": "coverage-smoke"
+  },
+  "commit_sha": "5eefbd76acd5e410e249ed21ec610b2570ebb932",
+  "git_dirty": false,
+  "lock_sha256": "c9f693339571b112de278aeefa780d9fb6f2cf5ebd38d860ea0178c3f4012d32",
+  "python": "3.12.14",
+  "packages": {
+    "a2a-sdk": "1.2.3",
+    "fastapi": "0.162.0",
+    "httpx": "0.28.1",
+    "pydantic": "2.14.1",
+    "uvicorn": "0.54.0",
+    "opentelemetry-sdk": "1.45.1",
+    "psutil": "7.2.2"
+  },
+  "environment": {
+    "os": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "logical_cpus": 9,
+    "physical_cpus": 9,
+    "total_memory_bytes": 10451435520,
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "cpu.max": "800000 100000",
+    "memory.max": "8589934592",
+    "cpuset.cpus.effective": "0-8"
+  },
+  "image_hashes": {
+    "application": null
+  },
+  "network": {
+    "topology": "same-host loopback",
+    "protocol": "none",
+    "workers": 0,
+    "specialist_processes": 0,
+    "tls": false,
+    "keepalive": null,
+    "connection_limit": 0,
+    "discovery": "none",
+    "load_generator": "python monotonic fixed-arrival deadlines"
+  },
+  "fixture_sha256": "0b273ced5ffbf8b0280922fef971a6722bb89f309c928632b8b0bdf1932a3bfb",
+  "offered": 5,
+  "completed": 5,
+  "succeeded": 5,
+  "dropped": 0,
+  "elapsed_seconds": 1.0003349120001985,
+  "arrival_window_seconds": 1.0,
+  "sample_sha256": "1a2eb71cc7e225284d87e2b95762e9c63af74a07d9ed9405bdcf98bc0b50cda9",
+  "resource_sha256": "d6b819c7f98c94064fcab55f97f056eae7bad76dc8146297ab0d8b4f579c1aee",
+  "limitations": [
+    "Synthetic asynchronous wait is not CPU work or model inference.",
+    "Shared host; generator competes with system under test. No hardware isolation claim.",
+    "Body bytes exclude TCP/IP and HTTP headers. Serialization metric covers explicit domain codec only.",
+    "A2A uses immediate Message replies; task lifecycle, retries and discovery cost are excluded.",
+    "OTel enabled includes synchronous local JSONL export; not a universal instrumentation overhead.",
+    "No image digest for native subprocess runs; null means not used/not measured."
+  ]
+}

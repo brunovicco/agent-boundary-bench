@@ -1,0 +1,63 @@
+{
+  "schema_version": "k6-smoke-1",
+  "python": "3.12.14",
+  "packages": {
+    "a2a-sdk": "1.2.3",
+    "fastapi": "0.162.0",
+    "httpx": "0.28.1",
+    "pydantic": "2.14.1",
+    "uvicorn": "0.54.0",
+    "opentelemetry-sdk": "1.45.1"
+  },
+  "started_at": "2026-10-25T13:38:33.095466+00:00",
+  "completed_at": "2026-10-25T13:38:40.011518+00:00",
+  "scenario": "a2a",
+  "rate": 5,
+  "duration": "2s",
+  "preallocated_vus": 64,
+  "warmup": 3,
+  "seed": 42,
+  "payload_bytes": 1024,
+  "wait_ms": 0,
+  "parallel": false,
+  "telemetry": false,
+  "k6_version": "k6 v2.3.0 (commit/e088784614, go1.26.8, linux/amd64)",
+  "commit_sha": "c3f573a75842d84ac6efdbd0b9f164a622a3fc4d",
+  "git_dirty": false,
+  "environment": {
+    "os": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "logical_cpus": 9,
+    "physical_cpus": 9,
+    "total_memory_bytes": 10451435520,
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "cpu.max": "800000 100000",
+    "memory.max": "8589934592",
+    "cpuset.cpus.effective": "0-8"
+  },
+  "lock_sha256": "c9f693339571b112de278aeefa780d9fb6f2cf5ebd38d860ea0178c3f4012d32",
+  "topology": "k6 -> common HTTP gateway -> selected boundary; same-host loopback",
+  "image_digest": null,
+  "exit_code": 0,
+  "offered": 11,
+  "completed": 11,
+  "dropped": 0,
+  "errors": 0,
+  "raw_sha256": "f52b3c43e80a0272f9283039009ad0af191c923920c768f72ebc1a9379690534",
+  "limitations": [
+    "Generator and application share a host.",
+    "k6 timers/topology differ from native harness; do not pool.",
+    "No process CPU/RSS collection in supplemental k6 smoke."
+  ]
+}

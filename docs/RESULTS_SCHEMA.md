@@ -23,3 +23,6 @@ Matplotlib and CSV/Markdown reports consume only completed native manifests and 
 `telemetry-deltas.csv` pairs only unique on/off rounds with identical config, environment,
 commit and lock. Missing or ambiguous pairs produce no delta. These are observational deltas,
 not causal estimates. `span-summary.csv` uses measured trace IDs and excludes warmup spans.
+
+Adapter codec/transport fields are sums across the three delegations. Under concurrent execution,
+those sums can exceed elapsed supervisor latency; they are not a serial wall-time breakdown.
