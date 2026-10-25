@@ -5,8 +5,10 @@
 v0.2.0 is implemented and validated natively: the v0.1 delegation family remains intact and
 the official MCP v2 direct, stdio and Streamable HTTP tool-access family is functional. Docker
 Compose execution and remote CI acceptance remain pending because this execution environment
-has no Docker binary/daemon and no configured Git remote. The user-reported macOS Docker host
-was not mounted into this isolated Linux workspace. No public release or remote push occurred.
+has no Docker binary/daemon and no configured Git remote. The connected GitHub account is
+`brunovicco`; repository search returned no `agent-boundary-bench`, but this connector exposes
+no repository-creation operation. The user-reported macOS Docker host was not mounted into this
+isolated Linux workspace. No public release or remote push occurred.
 
 The short smoke/pilot campaigns validate the experiment path and provide bounded observations.
 They do not establish sustained capacity, fault isolation or a general architecture ranking.
