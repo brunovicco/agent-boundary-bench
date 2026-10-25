@@ -9,7 +9,7 @@ from agent_boundary_bench.adapters.local import LocalDelegate
 from agent_boundary_bench.application.supervisor import Invocation, NullProbe, supervise
 from agent_boundary_bench.benchmark.models import Config, Manifest
 from agent_boundary_bench.benchmark.runner import arrivals, has_timeout, one, run
-from agent_boundary_bench.domain.credit import AnalysisTask, fixture
+from agent_boundary_bench.domain.credit import AnalysisTask, evaluate, fixture
 from agent_boundary_bench.entrypoints.cli import campaign_configs, validate
 from agent_boundary_bench.reporting.report import percentile, report, summarize
 
@@ -86,9 +86,47 @@ def test_statistics_campaign_and_fixtures(tmp_path: Path) -> None:
     assert len(full) == 1620
     assert full == campaign_configs(Path("experiments/full.json"))
     assert {c.repetition for c in full} == set(range(5))
+    assert len(campaign_configs(Path("experiments/mcp-smoke.json"))) == 24
+    assert len(campaign_configs(Path("experiments/mcp-pilot.json"))) == 120
+    assert len(campaign_configs(Path("experiments/mcp-full.json"))) == 1620
+    assert len(campaign_configs(Path("experiments/mcp-amplification-full.json"))) == 1440
     data = json.loads(Path("experiments/full.json").read_text())
     data["repetitions"] = 1
     path = tmp_path / "invalid.json"
     path.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="five repetitions"):
         campaign_configs(path)
+    with pytest.raises(ValueError, match="only for MCP"):
+        Config(scenario="a2a", context_copies=1)
+
+
+async def test_bounded_generalized_fanout() -> None:
+    class CountingDelegate:
+        def __init__(self) -> None:
+            self.active = 0
+            self.peak = 0
+
+        async def invoke(self, task: AnalysisTask) -> Invocation:
+            import asyncio
+
+            self.active += 1
+            self.peak = max(self.peak, self.active)
+            try:
+                await asyncio.sleep(0.005)
+                return Invocation(evaluate(task), 5)
+            finally:
+                self.active -= 1
+
+    delegate = CountingDelegate()
+    result = await supervise(
+        delegate,
+        fixture(1024),
+        0,
+        True,
+        1,
+        NullProbe(),
+        specialist_repetitions=4,
+        fanout_limit=2,
+    )
+    assert len(result.invocations) == 12
+    assert delegate.peak == 2

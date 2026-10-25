@@ -6,12 +6,17 @@ Implemented native local/HTTP/A2A paths, deterministic fixtures and oracle, sequ
 
 ## v0.2.0 — tool access and context topology
 
-- Recheck stable MCP v2 and its transport/client dependencies against the recorded compatibility study.
-- Implement MCP in-process SDK client/server, stdio and Streamable HTTP as separate tool-access arms.
-- Generalize fan-out/fan-in beyond the initial fixed three roles, with bounded concurrency.
-- Measure context/payload amplification and repeated tools/resources access.
-- Preserve distinct A2A delegation versus MCP tool-access questions; do not rank them as substitutes.
-- Add optional a2a-otel-kit integration behind an adapter, after measuring its instrumentation impact.
+Implemented with official MCP Python 2.3.0 and negotiated protocol 2026-07-28:
+
+- Separate SDK direct-dispatch, stdio and Streamable HTTP tool-access arms.
+- One deterministic `analyze_credit` tool and one versioned synthetic fixture resource template.
+- Generalized three-role fan-out repetitions with explicit bounded concurrency and ordered fan-in.
+- Independent context-copy, tool-call and uncached resource-read amplification controls.
+- v2 raw schema/manifest fields, reports, factorized campaign definitions and real transport tests.
+- Public MCP request metadata/server middleware for W3C correlation without SDK monkey patching.
+- Explicit A2A-delegation versus MCP-tool-access interpretation boundary.
+
+The optional `a2a-otel-kit` treatment is not silently enabled: doing so would change the existing A2A baseline. It remains suitable for a separately declared instrumentation campaign rather than a v0.2 kernel dependency.
 
 ## v0.3.0 — failures, pressure and isolation
 
@@ -20,4 +25,4 @@ Implemented native local/HTTP/A2A paths, deterministic fixtures and oracle, sequ
 - Process/container resource interference, failure containment and remote network topologies.
 - Advanced distributed telemetry, collector/exporter treatment matrices and lost-span accounting.
 
-No v0.2/v0.3 MCP/fault infrastructure is included speculatively in v0.1. Existing deadline tests validate current behavior; they do not constitute the future fault-injection campaign.
+v0.3 fault/pressure/isolation infrastructure is not included speculatively. Existing deadline and post-timeout recovery tests validate current behavior; they do not constitute a controlled fault-injection campaign.

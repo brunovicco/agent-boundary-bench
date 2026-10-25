@@ -1,5 +1,9 @@
 # Model Context Protocol policy
 
+## Laboratory server versus developer tooling
+
+v0.2 includes an internal synthetic `MCPServer` exercised only by the benchmark through direct dispatch, stdio or a harness-owned loopback Streamable HTTP worker. It has one side-effect-free analysis tool and one generated fixture resource. It requires no Codex MCP configuration, external account, credential or production access. The policy below applies to adding unrelated external MCP servers to the development environment.
+
 MCP gives Codex structured access to external systems. Every server expands the trust boundary,
 data-egress surface, and possible external actions, so add one only for a documented need.
 

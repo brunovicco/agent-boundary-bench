@@ -2,7 +2,7 @@
 
 import json
 import threading
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -63,12 +63,33 @@ class Telemetry:
             resource=Resource.create({"service.name": service}), sampler=ALWAYS_ON
         )
         self.provider.add_span_processor(SimpleSpanProcessor(JsonExporter(path)))
-        self.tracer = self.provider.get_tracer("agent-boundary-bench", "0.1.0")
+        self.tracer = self.provider.get_tracer("agent-boundary-bench", "0.2.0")
 
     @contextmanager
     def span(self, name: str) -> Iterator[trace.Span]:
         """Create a parentable span using public OTel interfaces."""
         with self.tracer.start_as_current_span(name) as span:
+            yield span
+
+    @contextmanager
+    def remote_span(
+        self,
+        name: str,
+        carrier: Mapping[str, object] | None,
+    ) -> Iterator[trace.Span]:
+        """Create a server span parented by a sanitized W3C metadata carrier."""
+        text_carrier = {
+            str(key): value for key, value in (carrier or {}).items() if isinstance(value, str)
+        }
+        # Direct in-process MCP dispatch carries the ambient context rather than a
+        # serialized metadata carrier. Passing an explicitly empty Context here
+        # would orphan that arm's server span.
+        parent = TraceContextTextMapPropagator().extract(text_carrier) if text_carrier else None
+        with self.tracer.start_as_current_span(
+            name,
+            context=parent,
+            kind=SpanKind.SERVER,
+        ) as span:
             yield span
 
     def close(self) -> None:

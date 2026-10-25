@@ -2,14 +2,16 @@
 
 The domain uses frozen standard-library dataclasses and pure integer rules. Boundary adapters use Pydantic v2 TypeAdapter and a common Reply envelope to validate external values. This preserves the harness rule that domain code has no framework dependency. Timings live outside AnalysisResult, so nondeterminism never affects business equivalence.
 
-Application code defines Delegate and Probe ports, Invocation observations and a supervisor. It owns task order, structured concurrency, deadlines and result validation. Adapters can be changed without changing the rules or supervisor.
+Application code defines Delegate and Probe ports, Invocation observations and a supervisor. It owns task order, bounded structured concurrency, deadlines and result validation. `specialist_repetitions` generalizes fan-out while `fanout_limit` bounds active adapter calls; deterministic handle order provides fan-in. Adapters can be changed without changing the rules or supervisor.
 
 The local adapter invokes the kernel. The HTTP adapter sends task JSON to FastAPI. The A2A adapter uses the official 1.x client, resolved public AgentCard and JSON-RPC routes. JSON text Parts carry the same task/reply envelope. Immediate Message responses avoid adding durable task storage and polling to only one experimental arm. The SDK's in-memory task-store dependency is constructed, but the workload does not create resumable tasks.
 
-One subprocess owns three remote specialist roles, matching HTTP and A2A process/worker counts and deployment location. The application enforces one deadline; HTTPX provides per-operation network timeouts. Pools are reused per round. Discovery and startup precede warmup. All service processes are stopped in finally blocks, with bounded graceful termination then kill only for an unresponsive child owned by the harness.
+MCP is modeled as a distinct tool-access family. One `MCPServer` publishes `analyze_credit` plus the versioned `credit://fixture/{size}/{seed}` resource template. The official v2 `Client` connects through direct in-process dispatch, official stdio transport or official Streamable HTTP transport. Server discovery and tool/resource listing occur once before warmup. Tool arguments may carry 0/1/4/16 exact synthetic context copies; tool calls, uncached resource reads and specialist fan-out have independent controls. Every returned result and resource is validated against the same domain oracle/fixture.
+
+One subprocess owns three remote specialist roles, matching HTTP and A2A process/worker counts and deployment location. MCP stdio and Streamable HTTP also use one tool-server process; MCP in-process deliberately does not. The application enforces one deadline; transport clients have explicit operation timeouts. Pools/sessions are reused per round. Discovery and startup precede warmup. All owned service processes are closed in finally blocks; externally visible HTTP children use bounded graceful termination then kill only when unresponsive.
 
 The benchmark package owns open arrivals, manifests and resource sampling. Observability owns explicit providers and propagation. Reporting verifies data before deriving statistics. CLI/gateway entrypoints compose the pieces. The gateway is a uniform optional ingress for k6 and does not alter native harness latency.
 
-The inherited architecture gate checks domain/application dependency direction. Tests exercise real SDK client/server exchanges, not a fully mocked A2A implementation. They do not constitute certification against the complete upstream TCK.
+The inherited architecture gate checks domain/application dependency direction. Tests exercise real A2A and MCP SDK client/server exchanges across sockets, pipes and direct dispatch rather than protocol mocks. They do not constitute certification against complete upstream TCKs.
 
-See ADRs 0001–0004 and methodology for trade-offs and inference limits.
+See ADRs 0001–0006 and methodology for trade-offs and inference limits.

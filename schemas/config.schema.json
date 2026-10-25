@@ -7,7 +7,10 @@
       "enum": [
         "local",
         "http",
-        "a2a"
+        "a2a",
+        "mcp-inprocess",
+        "mcp-stdio",
+        "mcp-streamable-http"
       ],
       "title": "Scenario",
       "type": "string"
@@ -89,6 +92,45 @@
       "default": "smoke",
       "title": "Label",
       "type": "string"
+    },
+    "specialist_repetitions": {
+      "default": 1,
+      "maximum": 32,
+      "minimum": 1,
+      "title": "Specialist Repetitions",
+      "type": "integer"
+    },
+    "fanout_limit": {
+      "default": 64,
+      "maximum": 128,
+      "minimum": 1,
+      "title": "Fanout Limit",
+      "type": "integer"
+    },
+    "context_copies": {
+      "default": 0,
+      "enum": [
+        0,
+        1,
+        4,
+        16
+      ],
+      "title": "Context Copies",
+      "type": "integer"
+    },
+    "tool_repetitions": {
+      "default": 1,
+      "maximum": 16,
+      "minimum": 1,
+      "title": "Tool Repetitions",
+      "type": "integer"
+    },
+    "resource_reads": {
+      "default": 0,
+      "maximum": 16,
+      "minimum": 0,
+      "title": "Resource Reads",
+      "type": "integer"
     }
   },
   "title": "Config",

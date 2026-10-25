@@ -1,0 +1,24 @@
+{
+  "label": "mcp-pilot",
+  "seed": 20261025,
+  "repetitions": 5,
+  "defaults": {
+    "payload_bytes": 16384,
+    "wait_ms": 0,
+    "parallel": true,
+    "rate": 10,
+    "duration": 1,
+    "warmup": 2,
+    "concurrency": 64,
+    "timeout": 5,
+    "specialist_repetitions": 1,
+    "fanout_limit": 8,
+    "tool_repetitions": 1
+  },
+  "matrix": {
+    "scenario": ["mcp-inprocess", "mcp-stdio", "mcp-streamable-http"],
+    "context_copies": [0, 4],
+    "resource_reads": [0, 2],
+    "telemetry": [false, true]
+  }
+}

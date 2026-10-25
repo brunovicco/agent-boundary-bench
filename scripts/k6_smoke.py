@@ -19,7 +19,18 @@ from agent_boundary_bench.benchmark.runtime import free_port, health
 def main() -> None:
     """Own a gateway and its child, then run a fixed-rate k6 workload."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scenario", choices=["local", "http", "a2a"], required=True)
+    parser.add_argument(
+        "--scenario",
+        choices=[
+            "local",
+            "http",
+            "a2a",
+            "mcp-inprocess",
+            "mcp-stdio",
+            "mcp-streamable-http",
+        ],
+        required=True,
+    )
     parser.add_argument("--k6-path", default=shutil.which("k6"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--duration", default="2s")
@@ -89,6 +100,9 @@ def main() -> None:
                 "pydantic",
                 "uvicorn",
                 "opentelemetry-sdk",
+                "mcp",
+                "mcp-types",
+                "httpx2",
             )
         },
         "started_at": started,
@@ -103,6 +117,11 @@ def main() -> None:
         "wait_ms": 0,
         "parallel": False,
         "telemetry": False,
+        "specialist_repetitions": 1,
+        "fanout_limit": 64,
+        "context_copies": 0,
+        "tool_repetitions": 1,
+        "resource_reads": 0,
         "k6_version": version,
         "commit_sha": git_value("rev-parse", "HEAD"),
         "git_dirty": bool(git_value("status", "--porcelain")),

@@ -46,12 +46,22 @@ def create_gateway(config: Config, directory: Path) -> FastAPI:
     @app.post("/execute")
     async def execute() -> dict[str, object]:
         result = await supervise(
-            delegate, case, config.wait_ms, config.parallel, config.timeout, probe
+            delegate,
+            case,
+            config.wait_ms,
+            config.parallel,
+            config.timeout,
+            probe,
+            specialist_repetitions=config.specialist_repetitions,
+            fanout_limit=config.fanout_limit,
         )
         return {
             "accepted": result.accepted,
             "results": [asdict(v.result) for v in result.invocations],
             "remote_calls": sum(v.remote_calls for v in result.invocations),
+            "tool_calls": sum(v.tool_calls for v in result.invocations),
+            "resource_reads": sum(v.resource_reads for v in result.invocations),
+            "context_bytes": sum(v.context_bytes for v in result.invocations),
         }
 
     return app

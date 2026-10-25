@@ -66,7 +66,7 @@ def create_app(scenario: str, url: str, telemetry: Telemetry | None = None) -> F
         return {
             "status": "ok",
             "scenario": scenario,
-            "version": "0.1.0",
+            "version": "0.2.0",
             "procfs_pid": str(procfs_pid()),
         }
 
@@ -83,7 +83,7 @@ def create_app(scenario: str, url: str, telemetry: Telemetry | None = None) -> F
         card = AgentCard(
             name="Synthetic credit specialists",
             description="Deterministic synthetic credit rules",
-            version="0.1.0",
+            version="0.2.0",
             capabilities=AgentCapabilities(streaming=False),
             default_input_modes=["application/json"],
             default_output_modes=["application/json"],

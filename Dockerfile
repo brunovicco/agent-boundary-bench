@@ -10,5 +10,5 @@ COPY . .
 RUN uv sync --frozen --no-dev && chown -R 10001:10001 /app
 USER 10001:10001
 ENV PATH="/app/.venv/bin:$PATH"
-EXPOSE 8100
+EXPOSE 8100 8300
 CMD ["abb", "serve", "--scenario", "http", "--host", "0.0.0.0", "--port", "8100"]

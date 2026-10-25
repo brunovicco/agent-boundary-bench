@@ -1,0 +1,24 @@
+{
+  "label": "mcp-smoke",
+  "seed": 42,
+  "repetitions": 1,
+  "defaults": {
+    "payload_bytes": 1024,
+    "wait_ms": 0,
+    "telemetry": false,
+    "rate": 5,
+    "duration": 0.5,
+    "warmup": 1,
+    "concurrency": 32,
+    "timeout": 5,
+    "specialist_repetitions": 1,
+    "fanout_limit": 4,
+    "tool_repetitions": 1
+  },
+  "matrix": {
+    "scenario": ["mcp-inprocess", "mcp-stdio", "mcp-streamable-http"],
+    "parallel": [false, true],
+    "context_copies": [0, 4],
+    "resource_reads": [0, 1]
+  }
+}

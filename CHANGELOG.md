@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — 2026-10-25
+
+- Official MCP Python SDK 2.3.0 client/server with negotiated 2026-07-28 protocol.
+- Separate MCP direct in-process, stdio and Streamable HTTP tool-access scenarios.
+- Deterministic credit-analysis tool and versioned fixture resource with real integration tests.
+- Bounded generalized fan-out/fan-in plus context, tool-call and resource-read amplification.
+- Raw schema v2, MCP-aware manifests/reports, factorized campaigns and trace propagation through public metadata.
+- Compose/CI/CLI and bilingual documentation updated for all six scenarios.
+- A2A and MCP remain explicitly separate experimental responsibility families.
+
 ## 0.1.0 — 2026-10-25
 
 - Shared deterministic synthetic credit kernel, versioned fixtures and three typed specialist roles.

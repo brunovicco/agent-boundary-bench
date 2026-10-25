@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from agent_boundary_bench.adapters.mcp import MCP_PROTOCOL_VERSION, MCPDelegate
 from agent_boundary_bench.adapters.remote import RemoteDelegate
 from agent_boundary_bench.application.supervisor import NullProbe, supervise
 from agent_boundary_bench.benchmark.models import Config
@@ -16,11 +17,14 @@ from agent_boundary_bench.observability import Telemetry
 
 @pytest.mark.integration
 @pytest.mark.contract
-@pytest.mark.parametrize("scenario", ["local", "http", "a2a"])
+@pytest.mark.parametrize(
+    "scenario",
+    ["local", "http", "a2a", "mcp-inprocess", "mcp-stdio", "mcp-streamable-http"],
+)
 async def test_real_adapter_equivalence(scenario: str, tmp_path: Path) -> None:
     config = Config.model_validate({"scenario": scenario})
     async with runtime(config, NullProbe(), tmp_path) as (delegate, pid):
-        assert (pid is None) == (scenario == "local")
+        assert (pid is not None) == (scenario in ("http", "a2a", "mcp-streamable-http"))
         for size in (1024, 16384, 131072):
             for wait in (0, 50, 250):
                 for specialist in Specialist:
@@ -41,6 +45,62 @@ async def test_real_adapter_equivalence(scenario: str, tmp_path: Path) -> None:
             await supervise(delegate, fixture(1024), 250, False, 0.01, NullProbe())
         recovered = await delegate.invoke(AnalysisTask(Specialist.DOCUMENT, fixture(1024)))
         assert recovered.result == evaluate(AnalysisTask(Specialist.DOCUMENT, fixture(1024)))
+
+
+@pytest.mark.integration
+@pytest.mark.contract
+@pytest.mark.parametrize("scenario", ["mcp-inprocess", "mcp-stdio", "mcp-streamable-http"])
+async def test_mcp_v2_tool_resource_and_context_amplification(
+    scenario: str, tmp_path: Path
+) -> None:
+    config = Config.model_validate(
+        {
+            "scenario": scenario,
+            "context_copies": 4,
+            "tool_repetitions": 2,
+            "resource_reads": 2,
+        }
+    )
+    async with runtime(config, NullProbe(), tmp_path) as (delegate, _):
+        assert isinstance(delegate, MCPDelegate)
+        assert delegate.protocol_version == MCP_PROTOCOL_VERSION
+        task = AnalysisTask(Specialist.FINANCIAL, fixture(16384))
+        invocation = await delegate.invoke(task)
+        assert invocation.result == evaluate(task)
+        assert invocation.remote_calls == 4
+        assert invocation.tool_calls == 2
+        assert invocation.resource_reads == 2
+        assert invocation.context_bytes > 4 * 16384
+        assert invocation.request_bytes > invocation.context_bytes
+        assert invocation.response_bytes > 2 * 16384
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("scenario", ["mcp-inprocess", "mcp-stdio", "mcp-streamable-http"])
+async def test_mcp_trace_context_uses_public_request_metadata(
+    scenario: str, tmp_path: Path
+) -> None:
+    telemetry = Telemetry(tmp_path / "harness-spans.jsonl", "test-mcp-client")
+    config = Config.model_validate({"scenario": scenario, "telemetry": True})
+    try:
+        async with runtime(config, telemetry, tmp_path) as (delegate, _):
+            with telemetry.span("mcp-test-root"):
+                await delegate.invoke(AnalysisTask(Specialist.DOCUMENT, fixture(1024)))
+    finally:
+        telemetry.close()
+    spans = [
+        json.loads(line)
+        for path in tmp_path.glob("*-spans.jsonl")
+        for line in path.read_text().splitlines()
+    ]
+    root = next(span for span in spans if span["name"] == "mcp-test-root")
+    server = [
+        span
+        for span in spans
+        if span["name"] == "mcp.transport.server" and span["trace_id"] == root["trace_id"]
+    ]
+    assert len(server) == 1
+    assert not any("synthetic-42" in json.dumps(span) for span in spans)
 
 
 @pytest.mark.integration

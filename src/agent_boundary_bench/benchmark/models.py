@@ -1,15 +1,25 @@
 """Versioned raw data contracts; absent measurements remain null."""
 
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+Scenario = Literal[
+    "local",
+    "http",
+    "a2a",
+    "mcp-inprocess",
+    "mcp-stdio",
+    "mcp-streamable-http",
+]
+MCP_SCENARIOS = frozenset({"mcp-inprocess", "mcp-stdio", "mcp-streamable-http"})
 
 
 class Config(BaseModel):
     """Controlled variables for a single experimental round."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-    scenario: Literal["local", "http", "a2a"] = "local"
+    scenario: Scenario = "local"
     payload_bytes: Literal[1024, 16384, 131072] = 1024
     wait_ms: Literal[0, 50, 250] = 0
     parallel: bool = False
@@ -22,13 +32,27 @@ class Config(BaseModel):
     seed: int = 42
     repetition: int = Field(default=0, ge=0)
     label: str = "smoke"
+    specialist_repetitions: int = Field(default=1, ge=1, le=32)
+    fanout_limit: int = Field(default=64, ge=1, le=128)
+    context_copies: Literal[0, 1, 4, 16] = 0
+    tool_repetitions: int = Field(default=1, ge=1, le=16)
+    resource_reads: int = Field(default=0, ge=0, le=16)
+
+    @model_validator(mode="after")
+    def mcp_only_controls(self) -> Self:
+        """Keep MCP tool/resource variables out of delegation experiments."""
+        if self.scenario not in MCP_SCENARIOS and (
+            self.context_copies or self.tool_repetitions != 1 or self.resource_reads
+        ):
+            raise ValueError("context/tool/resource amplification is valid only for MCP scenarios")
+        return self
 
 
 class Sample(BaseModel):
     """One offered arrival, including explicit generator drops and failures."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-    schema_version: str = "1"
+    schema_version: str = "2"
     index: int
     scheduled_ms: float
     started_ms: float
@@ -44,6 +68,9 @@ class Sample(BaseModel):
     serialization_ms: float | None = None
     transport_ms: float | None = None
     trace_id: str | None = None
+    tool_calls: int | None = None
+    resource_reads: int | None = None
+    context_bytes: int | None = None
 
 
 class ResourceSample(BaseModel):
@@ -61,7 +88,7 @@ class Manifest(BaseModel):
     """Machine-readable provenance of a real round, never fabricated hardware data."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-    schema_version: str = "1"
+    schema_version: str = "2"
     run_id: str
     started_at: str
     completed_at: str

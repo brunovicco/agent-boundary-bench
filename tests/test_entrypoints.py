@@ -53,7 +53,10 @@ def test_cli_workflow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("scenario", ["local", "http", "a2a"])
+@pytest.mark.parametrize(
+    "scenario",
+    ["local", "http", "a2a", "mcp-inprocess", "mcp-stdio", "mcp-streamable-http"],
+)
 async def test_gateway_real_delegation(scenario: str, tmp_path: Path) -> None:
     config = Config.model_validate({"scenario": scenario, "telemetry": True})
     app = create_gateway(config, tmp_path)

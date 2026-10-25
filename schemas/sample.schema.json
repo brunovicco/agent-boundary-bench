@@ -3,7 +3,7 @@
   "description": "One offered arrival, including explicit generator drops and failures.",
   "properties": {
     "schema_version": {
-      "default": "1",
+      "default": "2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -131,6 +131,42 @@
       ],
       "default": null,
       "title": "Trace Id"
+    },
+    "tool_calls": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tool Calls"
+    },
+    "resource_reads": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resource Reads"
+    },
+    "context_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Context Bytes"
     }
   },
   "required": [

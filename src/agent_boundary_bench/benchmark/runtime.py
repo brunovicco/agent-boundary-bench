@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 
 from agent_boundary_bench.adapters.local import LocalDelegate
+from agent_boundary_bench.adapters.mcp import MCPDelegate
 from agent_boundary_bench.adapters.remote import RemoteDelegate
 from agent_boundary_bench.application.supervisor import Delegate, Probe
 from agent_boundary_bench.benchmark.models import Config
@@ -42,27 +43,73 @@ async def runtime(
     probe: Probe,
     directory: Path,
 ) -> AsyncIterator[tuple[Delegate, int | None]]:
-    """Own exactly one worker for HTTP/A2A; local needs no external service."""
+    """Own each adapter and any one-worker process required by its boundary."""
     if config.scenario == "local":
         yield LocalDelegate(probe), None
         return
+    if config.scenario in ("mcp-inprocess", "mcp-stdio"):
+        mcp_delegate = MCPDelegate(
+            config.scenario,
+            probe,
+            config.timeout,
+            config.context_copies,
+            config.tool_repetitions,
+            config.resource_reads,
+            directory,
+        )
+        try:
+            await mcp_delegate.prepare()
+            yield mcp_delegate, None
+        finally:
+            await mcp_delegate.close()
+        return
     port = free_port()
     url = f"http://127.0.0.1:{port}"
-    command = [
-        sys.executable,
-        "-m",
-        "agent_boundary_bench.entrypoints.cli",
-        "serve",
-        "--scenario",
-        config.scenario,
-        "--port",
-        str(port),
-    ]
+    if config.scenario == "mcp-streamable-http":
+        command = [
+            sys.executable,
+            "-m",
+            "agent_boundary_bench.entrypoints.cli",
+            "mcp-serve",
+            "--transport",
+            "streamable-http",
+            "--port",
+            str(port),
+        ]
+    else:
+        command = [
+            sys.executable,
+            "-m",
+            "agent_boundary_bench.entrypoints.cli",
+            "serve",
+            "--scenario",
+            config.scenario,
+            "--port",
+            str(port),
+        ]
     if config.telemetry:
         command += ["--trace-file", str(directory / "specialist-spans.jsonl")]
     with (directory / "specialist.log").open("w", encoding="utf-8") as logfile:
         process = subprocess.Popen(command, stdout=logfile, stderr=logfile)  # noqa: S603  # nosec B603
-        delegate = RemoteDelegate(url, config.scenario, probe, config.telemetry, config.timeout)
+        if config.scenario == "mcp-streamable-http":
+            delegate: RemoteDelegate | MCPDelegate = MCPDelegate(
+                config.scenario,
+                probe,
+                config.timeout,
+                config.context_copies,
+                config.tool_repetitions,
+                config.resource_reads,
+                directory,
+                url,
+            )
+        else:
+            delegate = RemoteDelegate(
+                url,
+                config.scenario,
+                probe,
+                config.telemetry,
+                config.timeout,
+            )
         try:
             visible_pid = await health(url)
             await delegate.prepare()

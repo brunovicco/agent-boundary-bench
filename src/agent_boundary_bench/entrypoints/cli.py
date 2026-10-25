@@ -10,8 +10,9 @@ from pathlib import Path
 
 import uvicorn
 
+from agent_boundary_bench.adapters.mcp import create_mcp_server
 from agent_boundary_bench.adapters.server import create_app
-from agent_boundary_bench.benchmark.models import Config
+from agent_boundary_bench.benchmark.models import Config, Scenario
 from agent_boundary_bench.benchmark.runner import run
 from agent_boundary_bench.benchmark.runtime import health
 from agent_boundary_bench.domain.credit import (
@@ -26,6 +27,15 @@ from agent_boundary_bench.entrypoints.gateway import create_gateway
 from agent_boundary_bench.observability import Telemetry
 from agent_boundary_bench.reporting.report import report
 
+SCENARIOS: tuple[Scenario, ...] = (
+    "local",
+    "http",
+    "a2a",
+    "mcp-inprocess",
+    "mcp-stdio",
+    "mcp-streamable-http",
+)
+
 
 def parser() -> argparse.ArgumentParser:
     """Declare only implemented CLI options."""
@@ -38,20 +48,26 @@ def parser() -> argparse.ArgumentParser:
     server.add_argument("--port", type=int, default=8100)
     server.add_argument("--public-url", help="advertised A2A URL, defaults to bind URL")
     server.add_argument("--trace-file", type=Path)
+    mcp_server = sub.add_parser("mcp-serve", help="official MCP v2 tool/resource server")
+    mcp_server.add_argument("--transport", choices=["stdio", "streamable-http"], required=True)
+    mcp_server.add_argument("--host", default="127.0.0.1")
+    mcp_server.add_argument("--port", type=int, default=8300)
+    mcp_server.add_argument("--trace-file", type=Path)
     gateway = sub.add_parser("gateway", help="uniform supervisor ingress for k6")
-    gateway.add_argument("--scenario", choices=["local", "http", "a2a"], required=True)
+    gateway.add_argument("--scenario", choices=SCENARIOS, required=True)
     gateway.add_argument("--port", type=int, default=8200)
     gateway.add_argument("--payload-bytes", type=int, default=1024)
     gateway.add_argument("--wait-ms", type=int, default=0)
     gateway.add_argument("--parallel", action="store_true")
     gateway.add_argument("--telemetry", action="store_true")
+    _topology_arguments(gateway)
     gateway.add_argument("--output", type=Path, default=Path("results/gateway"))
     check = sub.add_parser("health")
     check.add_argument("--url", required=True)
     bench = sub.add_parser(
         "run", help="native open-arrival round; automatically owns remote worker"
     )
-    bench.add_argument("--scenario", choices=["local", "http", "a2a"], required=True)
+    bench.add_argument("--scenario", choices=SCENARIOS, required=True)
     bench.add_argument("--profile", choices=["smoke", "pilot"], default="smoke")
     bench.add_argument("--payload-bytes", type=int, choices=[1024, 16384, 131072], default=1024)
     bench.add_argument("--wait-ms", type=int, choices=[0, 50, 250], default=0)
@@ -62,6 +78,7 @@ def parser() -> argparse.ArgumentParser:
     bench.add_argument("--timeout", type=float, default=5)
     bench.add_argument("--concurrency", type=int, default=64)
     bench.add_argument("--seed", type=int, default=42)
+    _topology_arguments(bench)
     bench.add_argument("--output", type=Path, default=Path("results"))
     campaign = sub.add_parser("campaign", help="execute a reproducibly shuffled matrix")
     campaign.add_argument("--config", type=Path, default=Path("experiments/full.json"))
@@ -70,6 +87,15 @@ def parser() -> argparse.ArgumentParser:
     render.add_argument("--input", type=Path, required=True)
     render.add_argument("--output", type=Path, default=Path("reports/latest"))
     return root
+
+
+def _topology_arguments(command: argparse.ArgumentParser) -> None:
+    """Add v0.2 fan-out and MCP amplification controls."""
+    command.add_argument("--specialist-repetitions", type=int, default=1)
+    command.add_argument("--fanout-limit", type=int, default=64)
+    command.add_argument("--context-copies", type=int, choices=[0, 1, 4, 16], default=0)
+    command.add_argument("--tool-repetitions", type=int, default=1)
+    command.add_argument("--resource-reads", type=int, default=0)
 
 
 def validate() -> None:
@@ -163,6 +189,33 @@ def main() -> None:
             finally:
                 if telemetry:
                     telemetry.close()
+        case "mcp-serve":
+            telemetry = (
+                Telemetry(args.trace_file, "abb-mcp-specialist") if args.trace_file else None
+            )
+            mcp = create_mcp_server(telemetry)
+            try:
+                if args.transport == "stdio":
+                    asyncio.run(mcp.run_stdio_async())
+                else:
+                    uvicorn.run(
+                        mcp.streamable_http_app(
+                            streamable_http_path="/mcp",
+                            json_response=True,
+                            stateless_http=True,
+                            host=args.host,
+                        ),
+                        host=args.host,
+                        port=args.port,
+                        workers=1,
+                        loop="asyncio",
+                        http="h11",
+                        access_log=False,
+                        log_level="warning",
+                    )
+            finally:
+                if telemetry:
+                    telemetry.close()
         case "health":
             asyncio.run(health(args.url, attempts=1))
             print("healthy")
@@ -176,6 +229,11 @@ def main() -> None:
                         "wait_ms",
                         "parallel",
                         "telemetry",
+                        "specialist_repetitions",
+                        "fanout_limit",
+                        "context_copies",
+                        "tool_repetitions",
+                        "resource_reads",
                     )
                 }
             )
@@ -202,6 +260,11 @@ def main() -> None:
                         "timeout",
                         "concurrency",
                         "seed",
+                        "specialist_repetitions",
+                        "fanout_limit",
+                        "context_copies",
+                        "tool_repetitions",
+                        "resource_reads",
                     )
                 }
                 | {

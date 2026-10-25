@@ -1,0 +1,24 @@
+{
+  "label": "full",
+  "seed": 20261026,
+  "repetitions": 5,
+  "defaults": {
+    "wait_ms": 0,
+    "parallel": true,
+    "telemetry": false,
+    "rate": 20,
+    "duration": 10,
+    "warmup": 3,
+    "concurrency": 128,
+    "timeout": 20,
+    "fanout_limit": 8
+  },
+  "matrix": {
+    "scenario": ["mcp-inprocess", "mcp-stdio", "mcp-streamable-http"],
+    "payload_bytes": [1024, 16384, 131072],
+    "context_copies": [0, 1, 4, 16],
+    "tool_repetitions": [1, 4],
+    "resource_reads": [0, 4],
+    "specialist_repetitions": [1, 4]
+  }
+}

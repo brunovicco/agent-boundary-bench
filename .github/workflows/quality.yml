@@ -24,6 +24,9 @@ jobs:
           uv run abb run --scenario local --profile smoke
           uv run abb run --scenario http --profile smoke
           uv run abb run --scenario a2a --profile smoke
+          uv run abb run --scenario mcp-inprocess --profile smoke
+          uv run abb run --scenario mcp-stdio --profile smoke
+          uv run abb run --scenario mcp-streamable-http --profile smoke
           uv run abb report --input results/ --output build/smoke-report
   compose:
     runs-on: ubuntu-latest

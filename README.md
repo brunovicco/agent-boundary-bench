@@ -1,10 +1,10 @@
 # Agent Boundary Bench
 
-A reproducible laboratory asking: **what changes when the same specialist call crosses a process and protocol boundary?** Synthetic corporate credit analysis runs through in-process Python, conventional HTTP and official A2A JSON-RPC adapters. No LLM, commercial key, database or real financial data is used.
+A reproducible laboratory asking: **what changes when the same operation crosses a process and protocol boundary?** Synthetic corporate credit analysis runs through delegation boundaries (in-process Python, conventional HTTP and A2A JSON-RPC) and separate MCP tool-access boundaries (SDK direct dispatch, stdio and Streamable HTTP). No LLM, commercial key, database or real financial data is used.
 
 [Português](README.pt-BR.md) · [Methodology](docs/METHODOLOGY.md) · [Compatibility research](docs/COMPATIBILITY.md) · [Validation](VALIDATION.md)
 
-**v0.1.0 implementation:** executable native harness, functional protocol tests, OpenTelemetry, reports and container configuration. See `VALIDATION.md` for exactly what ran. Container execution and remote CI remain unverified when no Docker/GitHub runner is available. A smoke or pilot result does not establish saturation or a general architecture ranking.
+**v0.2.0 implementation:** the v0.1 delegation laboratory plus official MCP Python SDK v2 tools/resources, bounded generalized fan-out/fan-in and controlled context/access amplification. See `VALIDATION.md` for exactly what ran. A smoke or pilot result does not establish saturation or a general architecture ranking.
 
 ## The experiment
 
@@ -14,27 +14,32 @@ A reproducible laboratory asking: **what changes when the same specialist call c
 | A1 `http` | JSON over persistent HTTP/1.1 | Supervisor + one specialist worker | None |
 | A2 `a2a` | A2A 1.0 JSON-RPC, official SDK | Supervisor + one specialist worker | Immediate Message replies |
 
+MCP is a separate treatment family for tool/resource access:
+
+| Scenario | Tool-access boundary | Processes, excluding generator | MCP transport |
+|---|---|---:|---|
+| T0 `mcp-inprocess` | Official SDK direct dispatcher | Supervisor with embedded tool server | In-process SDK facility |
+| T1 `mcp-stdio` | Official SDK client and child server | Supervisor + one tool worker | JSON-RPC over stdio |
+| T2 `mcp-streamable-http` | Official SDK client and remote server | Supervisor + one tool worker | Streamable HTTP |
+
 All three specialists (`document_analyst`, `financial_analyst`, `compliance_analyst`) share one deterministic kernel. Remote services expose three skills in one process, identically for A1/A2. These are synthetic specialist roles, not autonomous LLM agents. No independent trust or scaling benefit is claimed as measured in v0.1.
 
 ```mermaid
 flowchart TD
-    H["Open-arrival harness"] --> S["Supervisor and typed Delegate port"]
-    S --> L["A0: local adapter"]
-    S --> R["A1: HTTP adapter"]
-    S --> A["A2: A2A SDK client"]
-    L --> K["Shared deterministic kernel"]
-    R --> W["One FastAPI worker per remote scenario"]
-    A --> W
-    W --> K
-    H --> D["Raw samples and manifests"]
-    D --> P["Validated tables and plots"]
+    H["Open-arrival harness"] --> S["Supervisor and typed port"]
+    S --> A["Delegation family: local, HTTP, A2A"]
+    S --> M["Tool-access family: MCP direct, stdio, Streamable HTTP"]
+    A --> K["Shared deterministic kernel"]
+    M --> K
+    H --> R["Raw samples and manifests"]
+    R --> P["Validated tables and plots"]
 ```
 
 The diagram shows alternative runs: HTTP and A2A do not share a live worker in a measured native round.
 
 ### Why MCP is not a competing agent protocol
 
-A2A delegates work to an independently exposed agent. MCP exposes tools, resources and prompts to a host. Ordinary HTTP is the service communication baseline. Comparing their latencies as if they represented interchangeable responsibilities would answer the wrong question. MCP SDK v2 was researched; MCP implementation belongs to v0.2, in separate tool-access experiments.
+A2A delegates work to an independently exposed agent. MCP exposes tools, resources and prompts to a host. Ordinary HTTP is the service communication baseline. Comparing A2A and MCP latencies as if they represented interchangeable responsibilities would answer the wrong question. v0.2 implements MCP as its own treatment family and retains explicit scenario/configuration labels rather than declaring one protocol a replacement for another.
 
 ### Hypotheses, not conclusions
 
@@ -56,6 +61,9 @@ uv run python scripts/quality_gate.py
 uv run abb run --scenario local --profile smoke
 uv run abb run --scenario http --profile smoke
 uv run abb run --scenario a2a --profile smoke
+uv run abb run --scenario mcp-inprocess --profile smoke
+uv run abb run --scenario mcp-stdio --profile smoke
+uv run abb run --scenario mcp-streamable-http --profile smoke
 uv run abb report --input results/ --output reports/latest
 ```
 
@@ -66,10 +74,23 @@ uv run abb run --scenario a2a --payload-bytes 131072 --wait-ms 50 \
   --parallel --telemetry --rate 20 --duration 10 --output results/example
 uv run abb campaign --config experiments/pilot.json --output results/pilot
 uv run abb campaign --config experiments/full.json --output results/full
+uv run abb campaign --config experiments/mcp-pilot.json --output results/mcp-pilot
+uv run abb campaign --config experiments/mcp-full.json --output results/mcp-full
+uv run abb campaign --config experiments/mcp-amplification-full.json \
+  --output results/mcp-amplification
 uv run abb report --input results/full --output reports/full
 ```
 
-The full matrix has **1,620 rounds**, five repeats per condition, 5/20/50 RPS, 1/16/128 KiB canonical business payloads, 0/50/250 ms async wait, sequential/concurrent modes and telemetry off/on. Measurement windows alone take 13.5 hours; startup and warmup add time. Start with the pilot and calibrate rates on your host. `coverage-smoke.json` exercises the workload matrix once and is not a full campaign.
+Both delegation `full.json` and boundary-focused `mcp-full.json` have **1,620 rounds** and 13.5 hours of measurement windows. `mcp-amplification-full.json` has 1,440 rounds and factors payload, context copies, repeated tool/resource access and fan-out separately from capacity rates. Start with `mcp-smoke.json` or the five-repeat MCP pilot. Startup and warmup add time; do not execute two campaigns concurrently on the same benchmark host.
+
+Example amplification run:
+
+```bash
+uv run abb run --scenario mcp-streamable-http --payload-bytes 16384 \
+  --context-copies 4 --tool-repetitions 2 --resource-reads 2 \
+  --specialist-repetitions 4 --parallel --fanout-limit 8 \
+  --rate 20 --duration 10 --output results/mcp-example
+```
 
 Campaign order is shuffled independently within each repetition using an explicit seed. `campaign.json` stores the planned order and completed rounds. Use a new output directory for each campaign. Failed warmup/startup aborts visibly; incomplete round directories lack a completed manifest and must not be treated as results.
 
@@ -79,12 +100,13 @@ Campaign order is shuffled independently within each repetition using an explici
 docker compose up --build --wait
 uv run abb health --url http://127.0.0.1:8101
 uv run abb health --url http://127.0.0.1:8102
+uv run abb health --url http://127.0.0.1:8103
 docker compose --profile tools run --rm verify
 docker compose images --format json > results/container-images.json
 docker compose down --remove-orphans
 ```
 
-Both workers use the same image, one worker, 1 CPU and 512 MiB limits. A2A advertises `http://a2a:8100/rpc` for clients inside Compose; published loopback ports support health checks. `verify` exercises both protocols from the same network. Native `abb run` intentionally uses native subprocesses, not these containers; never relabel a native result as a Docker measurement. The Python base image is pinned by digest. Save actual built image IDs before any separately designed container campaign; no container result is included without its provenance.
+HTTP, A2A and MCP Streamable HTTP use the same image, one worker, 1 CPU and 512 MiB limits. A2A advertises `http://a2a:8100/rpc` inside Compose; MCP is available at `http://mcp:8100/mcp`. `verify` executes all three public protocol clients and compares their business results. Native `abb run` intentionally uses native subprocesses, not these containers; never relabel a native result as a Docker measurement. Save actual built image IDs before any separately designed container campaign.
 
 ## Independent k6 generator
 
@@ -102,15 +124,15 @@ ABB_RATE=20 ABB_DURATION=10s k6 run --out json=results/k6/raw.jsonl \
   --summary-export results/k6/summary.json k6/arrival.js
 ```
 
-Stop terminal 1 with Ctrl-C. Repeat for `local` and `http`. k6 uses `constant-arrival-rate`, fixed preallocated VUs, three warmup requests and explicit dropped-iteration/error thresholds. Custom `abb_measured_*` metrics exclude setup; built-in HTTP metrics include warmup. The extra supervisor HTTP ingress is common to all k6 scenarios. **Keep k6 and native latencies separate.** k6's own JSON/summary are supplemental generator validation, not inputs to `abb report`. Native manifests are the canonical v0.1 measurement schema. Full container/k6 resource campaigns require their own environment records; do not infer them from a k6 summary.
+Stop terminal 1 with Ctrl-C. Repeat for any of the six scenarios. k6 uses `constant-arrival-rate`, fixed preallocated VUs, three warmup requests and explicit dropped-iteration/error thresholds. Custom `abb_measured_*` metrics exclude setup; built-in HTTP metrics include warmup. The extra supervisor HTTP ingress is common to all k6 scenarios. **Keep k6 and native latencies separate.** k6's own JSON/summary are supplemental generator validation, not inputs to `abb report`. Native manifests are the canonical v0.2 measurement schema; committed v0.1 records remain readable. Full container/k6 resource campaigns require their own environment records.
 
 ## Data and interpretation
 
 Each completed round contains `manifest.json`, `samples.jsonl`, `resources.jsonl`, and spans when enabled. Reports verify schemas, counts, contiguous sample IDs and file hashes before calculating P50/P95/P99, mean, median, throughput, failures, timeouts, body bytes, calls, CPU seconds and sampled peak RSS. `telemetry-deltas.csv` contains unique matched on/off pairs; `span-summary.csv` excludes warmup through measured trace IDs. Percentiles describe successful offered-arrival-to-completion latency, including scheduler lag. Errors/drops are reported separately. See [schemas and definitions](docs/RESULTS_SCHEMA.md).
 
-`0` bytes/calls means no network activity for local success; `null` means unmeasured or unavailable, especially partial failed executions. Request sizes are canonical domain body targets; task/protocol envelopes add bytes. We measure HTTP body bytes, not Ethernet/TCP traffic. Serialization timing covers explicit domain encoding/decoding, while the transport scope also contains SDK and envelope work. No subtraction of means is presented as a causal network decomposition.
+`0` bytes/calls means no boundary activity for local success; `null` means unmeasured or unavailable, especially partial failed executions. HTTP/A2A byte fields are observed HTTP bodies. MCP byte fields are explicit tool arguments, text results and resource URI/content; they exclude JSON-RPC/HTTP framing. `context_bytes`, `tool_calls` and `resource_reads` expose amplification directly. The manifest records this scope, so unlike byte definitions must not be silently pooled. No subtraction of means is presented as a causal network decomposition.
 
-Telemetry uses public OTel APIs, explicit always-on sampling, W3C trace context through public HTTPX hooks and ASGI middleware, and metadata-only JSONL export. Enabled-mode cost includes synchronous export. The kernel has no SDK dependency. `a2a-otel-kit` is an optional future integration, not installed or required here.
+Telemetry uses public OTel APIs, explicit always-on sampling, W3C trace context through HTTP headers or MCP request metadata, and metadata-only JSONL export. Enabled-mode cost includes synchronous export. The kernel has no SDK dependency. `a2a-otel-kit` remains an optional separate treatment rather than changing the A2A baseline implicitly.
 
 ## Architectural Decision Insights
 

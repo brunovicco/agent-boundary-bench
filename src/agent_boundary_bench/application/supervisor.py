@@ -44,6 +44,9 @@ class Invocation:
     serialization_ms: float = 0
     transport_ms: float = 0
     remote_calls: int = 0
+    tool_calls: int = 0
+    resource_reads: int = 0
+    context_bytes: int = 0
 
 
 class Delegate(Protocol):
@@ -70,16 +73,34 @@ async def supervise(
     parallel: bool,
     timeout: float,
     probe: Probe,
+    *,
+    specialist_repetitions: int = 1,
+    fanout_limit: int = 64,
 ) -> Execution:
-    """Run the same three tasks sequentially or concurrently under one deadline."""
+    """Run a deterministic fan-out/fan-in workload under one shared deadline."""
+    if specialist_repetitions < 1:
+        raise ValueError("specialist_repetitions must be positive")
+    if fanout_limit < 1:
+        raise ValueError("fanout_limit must be positive")
     started = perf_counter()
-    tasks = [AnalysisTask(specialist, case, wait_ms) for specialist in Specialist]
+    tasks = [
+        AnalysisTask(specialist, case, wait_ms)
+        for _ in range(specialist_repetitions)
+        for specialist in Specialist
+    ]
     with probe.span("supervisor"):
         async with asyncio.timeout(timeout):
             if parallel:
-                # TaskGroup cancels sibling delegations after an error.
+                semaphore = asyncio.Semaphore(fanout_limit)
+
+                async def bounded(task: AnalysisTask) -> Invocation:
+                    async with semaphore:
+                        return await delegate.invoke(task)
+
+                # TaskGroup cancels sibling delegations after an error and retains
+                # the deterministic task order through the handles below.
                 async with asyncio.TaskGroup() as group:
-                    pending = [group.create_task(delegate.invoke(task)) for task in tasks]
+                    pending = [group.create_task(bounded(task)) for task in tasks]
                 values = tuple(item.result() for item in pending)
             else:
                 values = tuple([await delegate.invoke(task) for task in tasks])

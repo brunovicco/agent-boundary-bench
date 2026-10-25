@@ -120,7 +120,14 @@ async def one(
         trace_id = f"{ctx.trace_id:032x}" if ctx and ctx.is_valid else None
         try:
             result = await supervise(
-                delegate, case, config.wait_ms, config.parallel, config.timeout, probe
+                delegate,
+                case,
+                config.wait_ms,
+                config.parallel,
+                config.timeout,
+                probe,
+                specialist_repetitions=config.specialist_repetitions,
+                fanout_limit=config.fanout_limit,
             )
             measured = {
                 "specialist_ms": [v.specialist_ms for v in result.invocations],
@@ -129,6 +136,9 @@ async def one(
                 "response_bytes": sum(v.response_bytes for v in result.invocations),
                 "serialization_ms": sum(v.serialization_ms for v in result.invocations),
                 "transport_ms": sum(v.transport_ms for v in result.invocations),
+                "tool_calls": sum(v.tool_calls for v in result.invocations),
+                "resource_reads": sum(v.resource_reads for v in result.invocations),
+                "context_bytes": sum(v.context_bytes for v in result.invocations),
             }
         except Exception as exc:  # measurement records failures rather than losing arrivals
             status = "timeout" if has_timeout(exc) else "error"
@@ -210,7 +220,14 @@ async def run(config: Config, output: Path) -> Path:
         async with runtime(config, probe, directory) as (delegate, pid):
             for _ in range(config.warmup):
                 await supervise(
-                    delegate, case, config.wait_ms, config.parallel, config.timeout, probe
+                    delegate,
+                    case,
+                    config.wait_ms,
+                    config.parallel,
+                    config.timeout,
+                    probe,
+                    specialist_repetitions=config.specialist_repetitions,
+                    fanout_limit=config.fanout_limit,
                 )
             stop = asyncio.Event()
             pids = {"harness": procfs_pid()}
@@ -249,19 +266,48 @@ async def run(config: Config, output: Path) -> Path:
                 "uvicorn",
                 "opentelemetry-sdk",
                 "psutil",
+                "mcp",
+                "mcp-types",
+                "httpx2",
             )
         },
         environment=environment(),
         image_hashes={"application": os.getenv("ABB_IMAGE_DIGEST")},
         network={
-            "topology": "same-host loopback",
-            "protocol": "HTTP/1.1" if pid else "none",
-            "workers": 1 if pid else 0,
-            "specialist_processes": 1 if pid else 0,
+            "topology": (
+                "in-process"
+                if config.scenario in ("local", "mcp-inprocess")
+                else "same-host stdio child process"
+                if config.scenario == "mcp-stdio"
+                else "same-host loopback"
+            ),
+            "protocol": (
+                "none"
+                if config.scenario == "local"
+                else "MCP direct dispatch"
+                if config.scenario == "mcp-inprocess"
+                else "MCP JSON-RPC stdio"
+                if config.scenario == "mcp-stdio"
+                else "MCP Streamable HTTP/1.1"
+                if config.scenario == "mcp-streamable-http"
+                else "HTTP/1.1"
+            ),
+            "workers": 0 if config.scenario in ("local", "mcp-inprocess") else 1,
+            "specialist_processes": (0 if config.scenario in ("local", "mcp-inprocess") else 1),
             "tls": False,
-            "keepalive": True if pid else None,
-            "connection_limit": 128 if pid else 0,
-            "discovery": "once before warmup" if config.scenario == "a2a" else "none",
+            "keepalive": (
+                True if config.scenario in ("http", "a2a", "mcp-streamable-http") else None
+            ),
+            "connection_limit": (
+                128 if config.scenario in ("http", "a2a", "mcp-streamable-http") else 0
+            ),
+            "discovery": (
+                "MCP server/discover plus tools/resources listing once before warmup"
+                if config.scenario.startswith("mcp-")
+                else "agent card once before warmup"
+                if config.scenario == "a2a"
+                else "none"
+            ),
             "load_generator": "python monotonic fixed-arrival deadlines",
         },
         fixture_sha256=digest(case),
@@ -283,6 +329,10 @@ async def run(config: Config, output: Path) -> Path:
             "OTel enabled includes synchronous local JSONL export; "
             "not a universal instrumentation overhead.",
             "No image digest for native subprocess runs; null means not used/not measured.",
+            "MCP request/response bytes are explicit tool arguments, text results and "
+            "resource URI/content bytes; JSON-RPC/HTTP framing and headers are excluded.",
+            "The MCP stdio SDK does not expose its child PID through the public client API; "
+            "specialist CPU/RSS are therefore unavailable for that arm.",
         ],
     )
     (directory / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n")

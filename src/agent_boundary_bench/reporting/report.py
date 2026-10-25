@@ -61,6 +61,11 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
         "telemetry": str(manifest.config.telemetry).lower(),
         "target_rps": manifest.config.rate,
         "repetition": manifest.config.repetition,
+        "specialist_repetitions": manifest.config.specialist_repetitions,
+        "fanout_limit": manifest.config.fanout_limit,
+        "context_copies": manifest.config.context_copies,
+        "tool_repetitions": manifest.config.tool_repetitions,
+        "resource_reads_per_specialist": manifest.config.resource_reads,
         "n_success": len(successful),
         "offered": manifest.offered,
         "completed": len(completed),
@@ -87,6 +92,9 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
         if successful
         else None,
         "remote_calls": sum(s.remote_calls or 0 for s in successful),
+        "tool_calls": sum(s.tool_calls or 0 for s in successful),
+        "resource_reads": sum(s.resource_reads or 0 for s in successful),
+        "context_bytes": sum(s.context_bytes or 0 for s in successful),
         "commit_sha": manifest.commit_sha,
     }
     row["specialist_ms_mean"] = (
@@ -158,6 +166,8 @@ def report(source: Path, output: Path) -> Path:
         "alongside measured latency budgets.",
         "A2A immediate replies do not measure durable delegation, failure recovery or "
         "remote trust boundaries.",
+        "MCP rows measure tool/resource access and must not be interpreted as an A2A "
+        "replacement or agent-delegation ranking.",
         "Local deployment has fewer processes; the experiment does not prove a "
         "universal topology winner.",
         "",
@@ -265,7 +275,8 @@ def plot(rows: list[dict[str, str | int | float | None]], path: Path) -> None:
     figure, axis = plt.subplots(figsize=(max(10, len(valid) * 0.4), 6.5))
     labels = [
         f"{r['scenario']} / {int(str(r['payload_bytes'])) // 1024}KiB / {r['wait_ms']}ms / "
-        f"{r['mode']} / otel={r['telemetry']} / r{r['repetition']}"
+        f"{r['mode']} / ctx={r['context_copies']} / tools={r['tool_repetitions']} / "
+        f"res={r['resource_reads_per_specialist']} / otel={r['telemetry']} / r{r['repetition']}"
         for r in valid
     ]
     axis.plot(range(len(valid)), [float(str(r["p50_ms"])) for r in valid], "o", label="P50")
