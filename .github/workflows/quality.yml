@@ -1,0 +1,36 @@
+name: quality
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.13.4"
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-groups
+      - run: uv run python scripts/quality_gate.py
+      - run: uv run abb validate
+      - name: Functional smoke only (shared runner timings are not published)
+        run: |
+          uv run abb run --scenario local --profile smoke
+          uv run abb run --scenario http --profile smoke
+          uv run abb run --scenario a2a --profile smoke
+          uv run abb report --input results/ --output build/smoke-report
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - run: docker compose up --build --wait
+      - run: docker compose --profile tools run --rm verify
+      - if: always()
+        run: docker compose logs && docker compose down --remove-orphans

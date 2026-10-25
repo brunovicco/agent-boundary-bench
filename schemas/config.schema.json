@@ -1,0 +1,96 @@
+{
+  "additionalProperties": false,
+  "description": "Controlled variables for a single experimental round.",
+  "properties": {
+    "scenario": {
+      "default": "local",
+      "enum": [
+        "local",
+        "http",
+        "a2a"
+      ],
+      "title": "Scenario",
+      "type": "string"
+    },
+    "payload_bytes": {
+      "default": 1024,
+      "enum": [
+        1024,
+        16384,
+        131072
+      ],
+      "title": "Payload Bytes",
+      "type": "integer"
+    },
+    "wait_ms": {
+      "default": 0,
+      "enum": [
+        0,
+        50,
+        250
+      ],
+      "title": "Wait Ms",
+      "type": "integer"
+    },
+    "parallel": {
+      "default": false,
+      "title": "Parallel",
+      "type": "boolean"
+    },
+    "telemetry": {
+      "default": false,
+      "title": "Telemetry",
+      "type": "boolean"
+    },
+    "rate": {
+      "default": 5,
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Rate",
+      "type": "integer"
+    },
+    "duration": {
+      "default": 2,
+      "exclusiveMinimum": 0,
+      "maximum": 3600,
+      "title": "Duration",
+      "type": "number"
+    },
+    "warmup": {
+      "default": 3,
+      "minimum": 1,
+      "title": "Warmup",
+      "type": "integer"
+    },
+    "concurrency": {
+      "default": 64,
+      "minimum": 1,
+      "title": "Concurrency",
+      "type": "integer"
+    },
+    "timeout": {
+      "default": 5,
+      "exclusiveMinimum": 0,
+      "title": "Timeout",
+      "type": "number"
+    },
+    "seed": {
+      "default": 42,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "repetition": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Repetition",
+      "type": "integer"
+    },
+    "label": {
+      "default": "smoke",
+      "title": "Label",
+      "type": "string"
+    }
+  },
+  "title": "Config",
+  "type": "object"
+}

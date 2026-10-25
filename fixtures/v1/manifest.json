@@ -1,0 +1,14 @@
+[
+  {
+    "bytes": 1024,
+    "sha256": "0404f97902db8b4de5236fdffe087ba8dad4a86ba09b5651de2ee0f68665162b"
+  },
+  {
+    "bytes": 16384,
+    "sha256": "f99bf3ffd741121658f9a1394bac5daf50997afe4c5fcb491824e4a19d2ccf1b"
+  },
+  {
+    "bytes": 131072,
+    "sha256": "0b273ced5ffbf8b0280922fef971a6722bb89f309c928632b8b0bdf1932a3bfb"
+  }
+]

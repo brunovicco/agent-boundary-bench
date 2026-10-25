@@ -1,0 +1,31 @@
+name: agent-boundary-bench
+x-app: &app
+  build: .
+  image: agent-boundary-bench:0.1.0
+  init: true
+  cpus: 1
+  mem_limit: 512m
+  healthcheck:
+    test: ["CMD", "abb", "health", "--url", "http://127.0.0.1:8100"]
+    interval: 5s
+    timeout: 3s
+    retries: 12
+    start_period: 5s
+services:
+  http:
+    <<: *app
+    command: ["abb", "serve", "--scenario", "http", "--host", "0.0.0.0", "--port", "8100"]
+    ports: ["127.0.0.1:8101:8100"]
+  a2a:
+    <<: *app
+    command: ["abb", "serve", "--scenario", "a2a", "--host", "0.0.0.0", "--port", "8100", "--public-url", "http://a2a:8100"]
+    ports: ["127.0.0.1:8102:8100"]
+  verify:
+    <<: *app
+    profiles: ["tools"]
+    command: ["python", "scripts/check_services.py"]
+    healthcheck:
+      disable: true
+    depends_on:
+      http: {condition: service_healthy}
+      a2a: {condition: service_healthy}

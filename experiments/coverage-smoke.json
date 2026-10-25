@@ -1,0 +1,38 @@
+{
+  "label": "coverage-smoke",
+  "seed": 42,
+  "repetitions": 1,
+  "defaults": {
+    "duration": 1,
+    "warmup": 1,
+    "concurrency": 64,
+    "timeout": 5
+  },
+  "matrix": {
+    "scenario": [
+      "local",
+      "http",
+      "a2a"
+    ],
+    "payload_bytes": [
+      1024,
+      16384,
+      131072
+    ],
+    "wait_ms": [
+      0,
+      50,
+      250
+    ],
+    "parallel": [
+      false,
+      true
+    ],
+    "telemetry": [
+      false
+    ],
+    "rate": [
+      5
+    ]
+  }
+}

@@ -1,0 +1,131 @@
+[project]
+name = "agent-boundary-bench"
+version = "0.1.0"
+description = "Reproducible experiments across local, HTTP and A2A agent boundaries"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "a2a-sdk[http-server]==1.2.3",
+    "fastapi==0.162.0",
+    "httpx==0.28.1",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.1",
+    "opentelemetry-api==1.45.1",
+    "opentelemetry-sdk==1.45.1",
+    "psutil==7.2.2",
+    "matplotlib==3.11.2",
+]
+
+[project.scripts]
+abb = "agent_boundary_bench.entrypoints.cli:main"
+
+[dependency-groups]
+dev = [
+    "bandit[toml]>=1.8",
+    "mypy==1.19.1",
+    "pip-audit>=2.9",
+    "pytest>=8.4",
+    "pytest-cov>=6.2",
+    "pytest-asyncio>=1.3",
+    "types-psutil>=7.0",
+    "ruff>=0.12",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_boundary_bench"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "RUF",
+    "ANN",
+    "D",
+    "S",
+]
+ignore = [
+    "ANN401", # Any is handled as an architecture concern and reviewed explicitly.
+    "D203",   # Incompatible with D211.
+    "D213",   # Google style uses D212.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D", "S101", "ANN"]
+"scripts/**/*.py" = ["D"]
+# scripts/_vendor_loop_schemas/models.py quotes its `from_dict` classmethods'
+# self-referencing return annotations on purpose (see that file's own header
+# comment): the quotes are load-bearing on Python 3.12/3.13 and only look
+# removable to ruff's UP037 when this project's own target-version is 3.14.
+# Suppressed here (not with an inline noqa) because an inline noqa becomes an
+# unused-directive RUF100 error on 3.12/3.13, where UP037 never fires.
+"scripts/_vendor_loop_schemas/models.py" = ["UP037"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+warn_unused_ignores = true
+show_error_codes = true
+pretty = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_decorators = false
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers --cov=src/agent_boundary_bench --cov-report=term-missing"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["error"]
+markers = [
+    "integration: tests that require real infrastructure",
+    "contract: tests that verify an interface contract",
+    "e2e: critical end-to-end tests",
+]
+
+[tool.coverage.run]
+patch = ["subprocess"]
+sigterm = true
+branch = true
+source = ["src/agent_boundary_bench"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 80
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = []
+
+[tool.engineering-harness.quality]
+source-roots = ["src"]
+test-roots = ["tests"]
+
+[tool.engineering-harness.architecture]
+source-roots = ["src"]
+clean-architecture = true

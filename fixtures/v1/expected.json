@@ -1,0 +1,101 @@
+[
+  {
+    "specialist": "document_analyst",
+    "case_id": "synthetic-42",
+    "score": 90,
+    "eligible": true,
+    "evidence": [
+      "document_count=3"
+    ],
+    "input_sha256": "0404f97902db8b4de5236fdffe087ba8dad4a86ba09b5651de2ee0f68665162b",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "financial_analyst",
+    "case_id": "synthetic-42",
+    "score": 96,
+    "eligible": true,
+    "evidence": [
+      "debt_ratio_bps=495"
+    ],
+    "input_sha256": "0404f97902db8b4de5236fdffe087ba8dad4a86ba09b5651de2ee0f68665162b",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "compliance_analyst",
+    "case_id": "synthetic-42",
+    "score": 100,
+    "eligible": true,
+    "evidence": [
+      "synthetic_flag=false"
+    ],
+    "input_sha256": "0404f97902db8b4de5236fdffe087ba8dad4a86ba09b5651de2ee0f68665162b",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "document_analyst",
+    "case_id": "synthetic-42",
+    "score": 90,
+    "eligible": true,
+    "evidence": [
+      "document_count=3"
+    ],
+    "input_sha256": "f99bf3ffd741121658f9a1394bac5daf50997afe4c5fcb491824e4a19d2ccf1b",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "financial_analyst",
+    "case_id": "synthetic-42",
+    "score": 96,
+    "eligible": true,
+    "evidence": [
+      "debt_ratio_bps=495"
+    ],
+    "input_sha256": "f99bf3ffd741121658f9a1394bac5daf50997afe4c5fcb491824e4a19d2ccf1b",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "compliance_analyst",
+    "case_id": "synthetic-42",
+    "score": 100,
+    "eligible": true,
+    "evidence": [
+      "synthetic_flag=false"
+    ],
+    "input_sha256": "f99bf3ffd741121658f9a1394bac5daf50997afe4c5fcb491824e4a19d2ccf1b",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "document_analyst",
+    "case_id": "synthetic-42",
+    "score": 90,
+    "eligible": true,
+    "evidence": [
+      "document_count=3"
+    ],
+    "input_sha256": "0b273ced5ffbf8b0280922fef971a6722bb89f309c928632b8b0bdf1932a3bfb",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "financial_analyst",
+    "case_id": "synthetic-42",
+    "score": 96,
+    "eligible": true,
+    "evidence": [
+      "debt_ratio_bps=495"
+    ],
+    "input_sha256": "0b273ced5ffbf8b0280922fef971a6722bb89f309c928632b8b0bdf1932a3bfb",
+    "kernel_version": "1"
+  },
+  {
+    "specialist": "compliance_analyst",
+    "case_id": "synthetic-42",
+    "score": 100,
+    "eligible": true,
+    "evidence": [
+      "synthetic_flag=false"
+    ],
+    "input_sha256": "0b273ced5ffbf8b0280922fef971a6722bb89f309c928632b8b0bdf1932a3bfb",
+    "kernel_version": "1"
+  }
+]

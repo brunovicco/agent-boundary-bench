@@ -1,0 +1,254 @@
+{
+  "$defs": {
+    "Config": {
+      "additionalProperties": false,
+      "description": "Controlled variables for a single experimental round.",
+      "properties": {
+        "scenario": {
+          "default": "local",
+          "enum": [
+            "local",
+            "http",
+            "a2a"
+          ],
+          "title": "Scenario",
+          "type": "string"
+        },
+        "payload_bytes": {
+          "default": 1024,
+          "enum": [
+            1024,
+            16384,
+            131072
+          ],
+          "title": "Payload Bytes",
+          "type": "integer"
+        },
+        "wait_ms": {
+          "default": 0,
+          "enum": [
+            0,
+            50,
+            250
+          ],
+          "title": "Wait Ms",
+          "type": "integer"
+        },
+        "parallel": {
+          "default": false,
+          "title": "Parallel",
+          "type": "boolean"
+        },
+        "telemetry": {
+          "default": false,
+          "title": "Telemetry",
+          "type": "boolean"
+        },
+        "rate": {
+          "default": 5,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Rate",
+          "type": "integer"
+        },
+        "duration": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "maximum": 3600,
+          "title": "Duration",
+          "type": "number"
+        },
+        "warmup": {
+          "default": 3,
+          "minimum": 1,
+          "title": "Warmup",
+          "type": "integer"
+        },
+        "concurrency": {
+          "default": 64,
+          "minimum": 1,
+          "title": "Concurrency",
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 5,
+          "exclusiveMinimum": 0,
+          "title": "Timeout",
+          "type": "number"
+        },
+        "seed": {
+          "default": 42,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "repetition": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Repetition",
+          "type": "integer"
+        },
+        "label": {
+          "default": "smoke",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "title": "Config",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Machine-readable provenance of a real round, never fabricated hardware data.",
+  "properties": {
+    "schema_version": {
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "started_at": {
+      "title": "Started At",
+      "type": "string"
+    },
+    "completed_at": {
+      "title": "Completed At",
+      "type": "string"
+    },
+    "config": {
+      "$ref": "#/$defs/Config"
+    },
+    "commit_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Commit Sha"
+    },
+    "git_dirty": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Git Dirty"
+    },
+    "lock_sha256": {
+      "title": "Lock Sha256",
+      "type": "string"
+    },
+    "python": {
+      "title": "Python",
+      "type": "string"
+    },
+    "packages": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Packages",
+      "type": "object"
+    },
+    "environment": {
+      "additionalProperties": true,
+      "title": "Environment",
+      "type": "object"
+    },
+    "image_hashes": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Image Hashes",
+      "type": "object"
+    },
+    "network": {
+      "additionalProperties": true,
+      "title": "Network",
+      "type": "object"
+    },
+    "fixture_sha256": {
+      "title": "Fixture Sha256",
+      "type": "string"
+    },
+    "offered": {
+      "title": "Offered",
+      "type": "integer"
+    },
+    "completed": {
+      "title": "Completed",
+      "type": "integer"
+    },
+    "succeeded": {
+      "title": "Succeeded",
+      "type": "integer"
+    },
+    "dropped": {
+      "title": "Dropped",
+      "type": "integer"
+    },
+    "elapsed_seconds": {
+      "title": "Elapsed Seconds",
+      "type": "number"
+    },
+    "arrival_window_seconds": {
+      "title": "Arrival Window Seconds",
+      "type": "number"
+    },
+    "sample_sha256": {
+      "title": "Sample Sha256",
+      "type": "string"
+    },
+    "resource_sha256": {
+      "title": "Resource Sha256",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "run_id",
+    "started_at",
+    "completed_at",
+    "config",
+    "commit_sha",
+    "git_dirty",
+    "lock_sha256",
+    "python",
+    "packages",
+    "environment",
+    "image_hashes",
+    "network",
+    "fixture_sha256",
+    "offered",
+    "completed",
+    "succeeded",
+    "dropped",
+    "elapsed_seconds",
+    "arrival_window_seconds",
+    "sample_sha256",
+    "resource_sha256",
+    "limitations"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}

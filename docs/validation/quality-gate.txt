@@ -1,0 +1,106 @@
+
+==> lock: uv lock --check
+Resolved 90 packages in 1ms
+
+==> lint: ruff check .
+All checks passed!
+
+==> format: ruff format --check .
+77 files already formatted
+
+==> architecture: /workspace/scratch/8816ef75d526/agent-boundary-bench/.venv/bin/python scripts/validate_architecture.py
+Architecture dependency check passed (1 source roots, 0 boundaries).
+
+==> mcp: /workspace/scratch/8816ef75d526/agent-boundary-bench/.venv/bin/python scripts/validate_mcp_config.py
+MCP configuration validation passed: 0 server(s)
+
+==> governance: /workspace/scratch/8816ef75d526/agent-boundary-bench/.venv/bin/python scripts/governance_gate.py
+Governance Gate: none
+Status: pass
+Required controls: 0
+
+==> loop-schema-vendor: /workspace/scratch/8816ef75d526/agent-boundary-bench/.venv/bin/python scripts/validate_loop_schema_vendor.py
+Vendored loop-schema bundle is valid: 0.1.2 @ 0459d61b7b1d4e7b46709e6d3895770553e6fab0.
+
+==> loop-contracts: /workspace/scratch/8816ef75d526/agent-boundary-bench/.venv/bin/python scripts/validate_loop_contracts.py
+No loop contracts found under .loop/contracts/ (expected while loop autonomy is 'report' -- Phase 0-1). Skipping.
+
+==> typing: mypy src tests
+Success: no issues found in 27 source files
+
+==> tests: pytest
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.7.0
+rootdir: /workspace/scratch/8816ef75d526/agent-boundary-bench
+configfile: pyproject.toml
+testpaths: tests
+plugins: platformdirs-4.13.5, cov-7.1.0, asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 18 items
+
+tests/test_adapters.py .....                                             [ 27%]
+tests/test_benchmark.py ....                                             [ 50%]
+tests/test_domain.py ....                                                [ 72%]
+tests/test_entrypoints.py ....                                           [ 94%]
+tests/unit/test_package.py .                                             [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.14-final-0 _______________
+
+Name                                                 Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------------------------
+src/agent_boundary_bench/adapters/remote.py             73      2     16      3    94%   100, 111->110, 114
+src/agent_boundary_bench/adapters/server.py             50      2      4      1    94%   55, 114
+src/agent_boundary_bench/application/supervisor.py      44      1      6      1    96%   89
+src/agent_boundary_bench/benchmark/runner.py           124      2     22      3    97%   37, 62->71, 218
+src/agent_boundary_bench/benchmark/runtime.py           50      4      6      1    91%   36, 75-77
+src/agent_boundary_bench/domain/credit.py               65      0     14      1    99%   94->97
+src/agent_boundary_bench/entrypoints/cli.py            125     10     36      7    88%   81, 85, 89, 125, 164-165, 167-168, 170-182, 220->exit
+src/agent_boundary_bench/entrypoints/gateway.py         34      0      2      1    97%   36->exit
+src/agent_boundary_bench/observability/__init__.py      56      1      8      1    97%   38
+src/agent_boundary_bench/observability/process.py        9      1      6      2    80%   14
+src/agent_boundary_bench/reporting/report.py           117      6     40      6    92%   31, 37, 41, 49, 207, 210
+------------------------------------------------------------------------------------------------
+TOTAL                                                  833     29    160     27    94%
+
+10 files skipped due to complete coverage.
+Required test coverage of 80.0% reached. Total coverage: 94.16%
+============================= 18 passed in 30.18s ==============================
+
+==> security: bandit -c pyproject.toml -r src
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	using config: pyproject.toml
+[main]	INFO	running on Python 3.12.14
+Run started:2026-10-25 13:27:53.986070+00:00
+
+Test results:
+	No issues identified.
+
+Code scanned:
+	Total lines of code: 1435
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 6
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+Files skipped (0):
+
+==> dependencies: pip-audit
+No known vulnerabilities found
+Name                 Skip Reason
+-------------------- -----------------------------------------------------------------------------------
+agent-boundary-bench Dependency not found on PyPI and could not be audited: agent-boundary-bench (0.1.0)
+
+Quality gate passed.

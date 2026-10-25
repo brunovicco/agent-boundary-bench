@@ -1,0 +1,41 @@
+{
+  "label": "full",
+  "seed": 42,
+  "repetitions": 5,
+  "defaults": {
+    "duration": 30,
+    "warmup": 5,
+    "concurrency": 64,
+    "timeout": 5
+  },
+  "matrix": {
+    "scenario": [
+      "local",
+      "http",
+      "a2a"
+    ],
+    "payload_bytes": [
+      1024,
+      16384,
+      131072
+    ],
+    "wait_ms": [
+      0,
+      50,
+      250
+    ],
+    "parallel": [
+      false,
+      true
+    ],
+    "telemetry": [
+      false,
+      true
+    ],
+    "rate": [
+      5,
+      20,
+      50
+    ]
+  }
+}

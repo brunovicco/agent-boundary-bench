@@ -1,0 +1,34 @@
+{
+  "label": "pilot",
+  "seed": 42,
+  "repetitions": 5,
+  "defaults": {
+    "duration": 2,
+    "warmup": 3,
+    "concurrency": 64,
+    "timeout": 5
+  },
+  "matrix": {
+    "scenario": [
+      "local",
+      "http",
+      "a2a"
+    ],
+    "payload_bytes": [
+      1024
+    ],
+    "wait_ms": [
+      0
+    ],
+    "parallel": [
+      false
+    ],
+    "telemetry": [
+      false,
+      true
+    ],
+    "rate": [
+      20
+    ]
+  }
+}

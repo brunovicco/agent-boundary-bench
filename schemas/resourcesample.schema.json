@@ -1,0 +1,39 @@
+{
+  "additionalProperties": false,
+  "description": "OS process sample; CPU seconds are cumulative, RSS is instantaneous.",
+  "properties": {
+    "elapsed_ms": {
+      "title": "Elapsed Ms",
+      "type": "number"
+    },
+    "role": {
+      "enum": [
+        "harness",
+        "specialist"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "pid": {
+      "title": "Pid",
+      "type": "integer"
+    },
+    "cpu_seconds": {
+      "title": "Cpu Seconds",
+      "type": "number"
+    },
+    "rss_bytes": {
+      "title": "Rss Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "elapsed_ms",
+    "role",
+    "pid",
+    "cpu_seconds",
+    "rss_bytes"
+  ],
+  "title": "ResourceSample",
+  "type": "object"
+}
