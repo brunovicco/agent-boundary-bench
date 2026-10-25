@@ -262,15 +262,20 @@ def plot(rows: list[dict[str, str | int | float | None]], path: Path) -> None:
     import matplotlib.pyplot as plt
 
     valid = [r for r in rows if r["p50_ms"] is not None]
-    figure, axis = plt.subplots(figsize=(max(9, len(valid) * 0.35), 5))
+    figure, axis = plt.subplots(figsize=(max(10, len(valid) * 0.4), 6.5))
     labels = [
-        f"{r['scenario']}\n{r['payload_bytes']}B/{r['wait_ms']}ms\n{str(r['mode'])[:3]}/otel={r['telemetry']}\nr{r['repetition']}"
+        f"{r['scenario']} / {int(str(r['payload_bytes'])) // 1024}KiB / {r['wait_ms']}ms / "
+        f"{r['mode']} / otel={r['telemetry']} / r{r['repetition']}"
         for r in valid
     ]
     axis.plot(range(len(valid)), [float(str(r["p50_ms"])) for r in valid], "o", label="P50")
     axis.plot(range(len(valid)), [float(str(r["p95_ms"])) for r in valid], "x", label="P95")
-    axis.set_xticks(range(len(valid)), labels, rotation=90, fontsize=7)
-    axis.set_ylabel("Scheduled-arrival latency (ms), successes")
+    axis.set_xticks(range(len(valid)), labels, rotation=75, ha="right", fontsize=7)
+    ylabel = "Scheduled-arrival latency (ms), successes"
+    if valid and all(float(str(r["p50_ms"])) > 0 for r in valid):
+        axis.set_yscale("log")
+        ylabel += " (log scale)"
+    axis.set_ylabel(ylabel)
     axis.set_title(
         "Real measurements · individual rounds · inspect configurations before comparison"
     )

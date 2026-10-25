@@ -88,7 +88,7 @@ Both workers use the same image, one worker, 1 CPU and 512 MiB limits. A2A adver
 
 ## Independent k6 generator
 
-Install k6 (2.3.0 was validated). In terminal 1:
+Install k6 (2.3.0 was validated). An automatic smoke wrapper is also available: `uv run python scripts/k6_smoke.py --scenario a2a --output results/k6-a2a`. It captures raw output, summary, versions and environment. For manual control, in terminal 1:
 
 ```bash
 uv run abb gateway --scenario a2a --port 8200 --output results/k6-gateway
@@ -106,7 +106,7 @@ Stop terminal 1 with Ctrl-C. Repeat for `local` and `http`. k6 uses `constant-ar
 
 ## Data and interpretation
 
-Each completed round contains `manifest.json`, `samples.jsonl`, `resources.jsonl`, and spans when enabled. Reports verify schemas, counts, contiguous sample IDs and file hashes before calculating P50/P95/P99, mean, median, throughput, failures, timeouts, body bytes, calls, CPU seconds and sampled peak RSS. Percentiles describe successful offered-arrival-to-completion latency, including scheduler lag. Errors/drops are reported separately. See [schemas and definitions](docs/RESULTS_SCHEMA.md).
+Each completed round contains `manifest.json`, `samples.jsonl`, `resources.jsonl`, and spans when enabled. Reports verify schemas, counts, contiguous sample IDs and file hashes before calculating P50/P95/P99, mean, median, throughput, failures, timeouts, body bytes, calls, CPU seconds and sampled peak RSS. `telemetry-deltas.csv` contains unique matched on/off pairs; `span-summary.csv` excludes warmup through measured trace IDs. Percentiles describe successful offered-arrival-to-completion latency, including scheduler lag. Errors/drops are reported separately. See [schemas and definitions](docs/RESULTS_SCHEMA.md).
 
 `0` bytes/calls means no network activity for local success; `null` means unmeasured or unavailable, especially partial failed executions. Request sizes are canonical domain body targets; task/protocol envelopes add bytes. We measure HTTP body bytes, not Ethernet/TCP traffic. Serialization timing covers explicit domain encoding/decoding, while the transport scope also contains SDK and envelope work. No subtraction of means is presented as a causal network decomposition.
 

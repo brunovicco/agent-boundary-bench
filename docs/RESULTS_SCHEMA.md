@@ -19,3 +19,7 @@ Completed means an admitted execution ended, including errors/timeouts. Offered 
 Schemas fix `extra=forbid` for raw records/config/manifest. Model validation occurs before reporting; raw sample/resource SHA-256 checks detect edits. The hashes establish file integrity relative to the manifest, not signed provenance or resistance to malicious rewriting of both files. Manifest hashes must be independently published if stronger evidence is required.
 
 Matplotlib and CSV/Markdown reports consume only completed native manifests and existing raw files. Percentiles use linear interpolation; n=0 produces N/A, never fabricated observations. Per-round success latency excludes failed requests; inspect error/drop/timeout columns alongside it. k6 raw records use k6's own Metric/Point schema and are deliberately not parsed as native Sample objects.
+
+`telemetry-deltas.csv` pairs only unique on/off rounds with identical config, environment,
+commit and lock. Missing or ambiguous pairs produce no delta. These are observational deltas,
+not causal estimates. `span-summary.csv` uses measured trace IDs and excludes warmup spans.

@@ -2,8 +2,10 @@
 
 import argparse
 import asyncio
+import importlib.metadata
 import json
 import os
+import platform
 import shutil
 import subprocess  # nosec B404
 import sys
@@ -77,6 +79,18 @@ def main() -> None:
     dropped = int(metrics.get("dropped_iterations", {}).get("count", 0))
     record = {
         "schema_version": "k6-smoke-1",
+        "python": platform.python_version(),
+        "packages": {
+            name: importlib.metadata.version(name)
+            for name in (
+                "a2a-sdk",
+                "fastapi",
+                "httpx",
+                "pydantic",
+                "uvicorn",
+                "opentelemetry-sdk",
+            )
+        },
         "started_at": started,
         "completed_at": datetime.now(UTC).isoformat(),
         "scenario": args.scenario,
