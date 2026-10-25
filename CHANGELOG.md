@@ -9,6 +9,7 @@
 - Raw schema v2, MCP-aware manifests/reports, factorized campaigns and trace propagation through public metadata.
 - Compose/CI/CLI and bilingual documentation updated for all six scenarios.
 - A2A and MCP remain explicitly separate experimental responsibility families.
+- Committed MCP smoke/pilot evidence: 144 native rounds, 1,272 successful requests and no errors, timeouts or drops; supplemental k6 smoke covers all three MCP boundaries.
 
 ## 0.1.0 — 2026-10-25
 

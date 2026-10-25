@@ -136,11 +136,17 @@ Telemetry uses public OTel APIs, explicit always-on sampling, W3C trace context 
 
 ## Architectural Decision Insights
 
-[Recorded insights](reports/INSIGHTS.md) include 102 native rounds and 2,820 successful executions,
-plus separate k6 validation. The repeated minimal-work pilot observed median per-round P50s of
+[Recorded insights](reports/INSIGHTS.md) include 246 native rounds and 4,092 successful executions,
+plus separate k6 validation. The repeated delegation pilot observed median per-round P50s of
 1.150 ms (local), 12.125 ms (HTTP) and 20.218 ms (A2A), telemetry off, 1 KiB, 20 RPS.
 These are five round medians per architecture, not portable or pooled percentiles. An A2A outlier
 and variable telemetry deltas are preserved. The short 50 RPS calibration does not establish saturation.
+
+The separate MCP pilot completed 1,200/1,200 requests. In the telemetry-off/no-context-copy/
+no-resource-read condition, median round P50 was 3.110 ms for direct dispatch, 5.842 ms for stdio and 6.315 ms
+for Streamable HTTP (five rounds, 50 samples per boundary). Adding two uncached resource reads
+per specialist increased all three observed medians. These short shared-host results validate
+the experiment path; they are not sustained-capacity or protocol-substitutability claims.
 
 
 - A modular monolith can avoid serialization/process boundaries; this alone says nothing about organizational autonomy or fault containment requirements.

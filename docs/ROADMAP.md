@@ -16,6 +16,11 @@ Implemented with official MCP Python 2.3.0 and negotiated protocol 2026-07-28:
 - Public MCP request metadata/server middleware for W3C correlation without SDK monkey patching.
 - Explicit A2A-delegation versus MCP-tool-access interpretation boundary.
 
+Recorded validation includes a 24-round smoke and 120-round five-repeat pilot, with 1,272
+successful executions and zero errors, timeouts or drops. The full 1,620-round boundary matrix
+and 1,440-round amplification matrix remain intentionally unexecuted until an isolated benchmark
+host is available; campaign definitions are versioned and ready.
+
 The optional `a2a-otel-kit` treatment is not silently enabled: doing so would change the existing A2A baseline. It remains suitable for a separately declared instrumentation campaign rather than a v0.2 kernel dependency.
 
 ## v0.3.0 — failures, pressure and isolation

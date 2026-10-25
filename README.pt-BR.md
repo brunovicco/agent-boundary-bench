@@ -89,4 +89,6 @@ Nos cenários HTTP/A2A, bytes representam corpos HTTP observados. Nos cenários 
 
 O objetivo é subsidiar decisões entre monólito modular, serviços e topologias híbridas. Uma fronteira pode ter custo relevante para chamadas pequenas e ainda atender a requisitos de interoperabilidade ou implantação independente. Este ambiente não mede esses benefícios automaticamente: eles exigem experimentos próprios. Não há vencedor previamente definido.
 
+O piloto MCP real executou 120 rodadas e concluiu 1.200/1.200 requisições sem erros, timeouts ou descartes. Na condição sem telemetria, sem cópias de contexto e sem leituras de resources, a mediana dos P50 por rodada foi 3,110 ms para dispatch direto, 5,842 ms para stdio e 6,315 ms para Streamable HTTP (cinco rodadas, 50 amostras por fronteira). Duas leituras não cacheadas por especialista elevaram as medianas observadas nas três fronteiras. São resultados curtos em host compartilhado: validam o caminho experimental, mas não demonstram capacidade sustentada nem substituição entre MCP e A2A.
+
 Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md) e as [regras de contribuição](CONTRIBUTING.md). O projeto permanece privado até autorização para publicação.
