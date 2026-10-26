@@ -4,109 +4,17 @@
       "additionalProperties": false,
       "description": "Controlled variables for a single experimental round.",
       "properties": {
-        "scenario": {
-          "default": "local",
-          "enum": [
-            "local",
-            "http",
-            "a2a",
-            "mcp-inprocess",
-            "mcp-stdio",
-            "mcp-streamable-http"
-          ],
-          "title": "Scenario",
-          "type": "string"
-        },
-        "payload_bytes": {
-          "default": 1024,
-          "enum": [
-            1024,
-            16384,
-            131072
-          ],
-          "title": "Payload Bytes",
-          "type": "integer"
-        },
-        "wait_ms": {
-          "default": 0,
-          "enum": [
-            0,
-            50,
-            250
-          ],
-          "title": "Wait Ms",
-          "type": "integer"
-        },
-        "parallel": {
-          "default": false,
-          "title": "Parallel",
-          "type": "boolean"
-        },
-        "telemetry": {
-          "default": false,
-          "title": "Telemetry",
-          "type": "boolean"
-        },
-        "rate": {
+        "attempt_timeout": {
           "default": 5,
-          "maximum": 10000,
-          "minimum": 1,
-          "title": "Rate",
-          "type": "integer"
-        },
-        "duration": {
-          "default": 2,
           "exclusiveMinimum": 0,
           "maximum": 3600,
-          "title": "Duration",
+          "title": "Attempt Timeout",
           "type": "number"
-        },
-        "warmup": {
-          "default": 3,
-          "minimum": 1,
-          "title": "Warmup",
-          "type": "integer"
         },
         "concurrency": {
           "default": 64,
           "minimum": 1,
           "title": "Concurrency",
-          "type": "integer"
-        },
-        "timeout": {
-          "default": 5,
-          "exclusiveMinimum": 0,
-          "title": "Timeout",
-          "type": "number"
-        },
-        "seed": {
-          "default": 42,
-          "title": "Seed",
-          "type": "integer"
-        },
-        "repetition": {
-          "default": 0,
-          "minimum": 0,
-          "title": "Repetition",
-          "type": "integer"
-        },
-        "label": {
-          "default": "smoke",
-          "title": "Label",
-          "type": "string"
-        },
-        "specialist_repetitions": {
-          "default": 1,
-          "maximum": 32,
-          "minimum": 1,
-          "title": "Specialist Repetitions",
-          "type": "integer"
-        },
-        "fanout_limit": {
-          "default": 64,
-          "maximum": 128,
-          "minimum": 1,
-          "title": "Fanout Limit",
           "type": "integer"
         },
         "context_copies": {
@@ -120,11 +28,116 @@
           "title": "Context Copies",
           "type": "integer"
         },
-        "tool_repetitions": {
-          "default": 1,
-          "maximum": 16,
+        "duration": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "maximum": 3600,
+          "title": "Duration",
+          "type": "number"
+        },
+        "fanout_limit": {
+          "default": 64,
+          "maximum": 128,
           "minimum": 1,
-          "title": "Tool Repetitions",
+          "title": "Fanout Limit",
+          "type": "integer"
+        },
+        "fault_delay_ms": {
+          "default": 100,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Fault Delay Ms",
+          "type": "integer"
+        },
+        "fault_every": {
+          "default": 1,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Fault Every",
+          "type": "integer"
+        },
+        "fault_mode": {
+          "default": "none",
+          "enum": [
+            "none",
+            "fail-first",
+            "delay-first",
+            "after-commit"
+          ],
+          "title": "Fault Mode",
+          "type": "string"
+        },
+        "idempotency": {
+          "default": false,
+          "title": "Idempotency",
+          "type": "boolean"
+        },
+        "idempotency_capacity": {
+          "default": 10000,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Idempotency Capacity",
+          "type": "integer"
+        },
+        "idempotency_ttl_seconds": {
+          "default": 300,
+          "exclusiveMinimum": 0,
+          "maximum": 86400,
+          "title": "Idempotency Ttl Seconds",
+          "type": "number"
+        },
+        "label": {
+          "default": "smoke",
+          "title": "Label",
+          "type": "string"
+        },
+        "max_attempts": {
+          "default": 1,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "parallel": {
+          "default": false,
+          "title": "Parallel",
+          "type": "boolean"
+        },
+        "payload_bytes": {
+          "default": 1024,
+          "enum": [
+            1024,
+            16384,
+            131072
+          ],
+          "title": "Payload Bytes",
+          "type": "integer"
+        },
+        "queue_capacity": {
+          "default": 0,
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Queue Capacity",
+          "type": "integer"
+        },
+        "queue_timeout_ms": {
+          "default": 1000,
+          "maximum": 60000,
+          "minimum": 1,
+          "title": "Queue Timeout Ms",
+          "type": "integer"
+        },
+        "rate": {
+          "default": 5,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Rate",
+          "type": "integer"
+        },
+        "repetition": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Repetition",
           "type": "integer"
         },
         "resource_reads": {
@@ -132,6 +145,79 @@
           "maximum": 16,
           "minimum": 0,
           "title": "Resource Reads",
+          "type": "integer"
+        },
+        "retry_backoff_ms": {
+          "default": 0,
+          "maximum": 60000,
+          "minimum": 0,
+          "title": "Retry Backoff Ms",
+          "type": "integer"
+        },
+        "scenario": {
+          "default": "local",
+          "enum": [
+            "local",
+            "http",
+            "a2a",
+            "mcp-inprocess",
+            "mcp-stdio",
+            "mcp-streamable-http"
+          ],
+          "title": "Scenario",
+          "type": "string"
+        },
+        "seed": {
+          "default": 42,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "service_concurrency": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Service Concurrency",
+          "type": "integer"
+        },
+        "specialist_repetitions": {
+          "default": 1,
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Specialist Repetitions",
+          "type": "integer"
+        },
+        "telemetry": {
+          "default": false,
+          "title": "Telemetry",
+          "type": "boolean"
+        },
+        "timeout": {
+          "default": 5,
+          "exclusiveMinimum": 0,
+          "title": "Timeout",
+          "type": "number"
+        },
+        "tool_repetitions": {
+          "default": 1,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Tool Repetitions",
+          "type": "integer"
+        },
+        "wait_ms": {
+          "default": 0,
+          "enum": [
+            0,
+            50,
+            250
+          ],
+          "title": "Wait Ms",
+          "type": "integer"
+        },
+        "warmup": {
+          "default": 3,
+          "minimum": 1,
+          "title": "Warmup",
           "type": "integer"
         }
       },
@@ -142,25 +228,9 @@
   "additionalProperties": false,
   "description": "Machine-readable provenance of a real round, never fabricated hardware data.",
   "properties": {
-    "schema_version": {
-      "default": "2",
-      "title": "Schema Version",
-      "type": "string"
-    },
-    "run_id": {
-      "title": "Run Id",
-      "type": "string"
-    },
-    "started_at": {
-      "title": "Started At",
-      "type": "string"
-    },
-    "completed_at": {
-      "title": "Completed At",
-      "type": "string"
-    },
-    "config": {
-      "$ref": "#/$defs/Config"
+    "arrival_window_seconds": {
+      "title": "Arrival Window Seconds",
+      "type": "number"
     },
     "commit_sha": {
       "anyOf": [
@@ -173,6 +243,34 @@
       ],
       "title": "Commit Sha"
     },
+    "completed": {
+      "title": "Completed",
+      "type": "integer"
+    },
+    "completed_at": {
+      "title": "Completed At",
+      "type": "string"
+    },
+    "config": {
+      "$ref": "#/$defs/Config"
+    },
+    "dropped": {
+      "title": "Dropped",
+      "type": "integer"
+    },
+    "elapsed_seconds": {
+      "title": "Elapsed Seconds",
+      "type": "number"
+    },
+    "environment": {
+      "additionalProperties": true,
+      "title": "Environment",
+      "type": "object"
+    },
+    "fixture_sha256": {
+      "title": "Fixture Sha256",
+      "type": "string"
+    },
     "git_dirty": {
       "anyOf": [
         {
@@ -183,26 +281,6 @@
         }
       ],
       "title": "Git Dirty"
-    },
-    "lock_sha256": {
-      "title": "Lock Sha256",
-      "type": "string"
-    },
-    "python": {
-      "title": "Python",
-      "type": "string"
-    },
-    "packages": {
-      "additionalProperties": {
-        "type": "string"
-      },
-      "title": "Packages",
-      "type": "object"
-    },
-    "environment": {
-      "additionalProperties": true,
-      "title": "Environment",
-      "type": "object"
     },
     "image_hashes": {
       "additionalProperties": {
@@ -218,53 +296,71 @@
       "title": "Image Hashes",
       "type": "object"
     },
-    "network": {
-      "additionalProperties": true,
-      "title": "Network",
-      "type": "object"
-    },
-    "fixture_sha256": {
-      "title": "Fixture Sha256",
-      "type": "string"
-    },
-    "offered": {
-      "title": "Offered",
-      "type": "integer"
-    },
-    "completed": {
-      "title": "Completed",
-      "type": "integer"
-    },
-    "succeeded": {
-      "title": "Succeeded",
-      "type": "integer"
-    },
-    "dropped": {
-      "title": "Dropped",
-      "type": "integer"
-    },
-    "elapsed_seconds": {
-      "title": "Elapsed Seconds",
-      "type": "number"
-    },
-    "arrival_window_seconds": {
-      "title": "Arrival Window Seconds",
-      "type": "number"
-    },
-    "sample_sha256": {
-      "title": "Sample Sha256",
-      "type": "string"
-    },
-    "resource_sha256": {
-      "title": "Resource Sha256",
-      "type": "string"
-    },
     "limitations": {
       "items": {
         "type": "string"
       },
       "title": "Limitations",
       "type": "array"
+    },
+    "lock_sha256": {
+      "title": "Lock Sha256",
+      "type": "string"
+    },
+    "network": {
+      "additionalProperties": true,
+      "title": "Network",
+      "type": "object"
+    },
+    "offered": {
+      "title": "Offered",
+      "type": "integer"
+    },
+    "packages": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Packages",
+      "type": "object"
+    },
+    "python": {
+      "title": "Python",
+      "type": "string"
+    },
+    "resource_sha256": {
+      "title": "Resource Sha256",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "sample_sha256": {
+      "title": "Sample Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "3",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "started_at": {
+      "title": "Started At",
+      "type": "string"
+    },
+    "succeeded": {
+      "title": "Succeeded",
+      "type": "integer"
+    },
+    "warmup_failed": {
+      "default": 0,
+      "title": "Warmup Failed",
+      "type": "integer"
+    },
+    "warmup_succeeded": {
+      "default": 0,
+      "title": "Warmup Succeeded",
+      "type": "integer"
     }
   },
   "required": [

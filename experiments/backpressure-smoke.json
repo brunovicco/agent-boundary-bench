@@ -1,0 +1,23 @@
+{
+  "label": "backpressure-smoke",
+  "seed": 42,
+  "repetitions": 1,
+  "defaults": {
+    "payload_bytes": 1024,
+    "wait_ms": 50,
+    "parallel": true,
+    "telemetry": false,
+    "duration": 1,
+    "warmup": 1,
+    "concurrency": 64,
+    "timeout": 2,
+    "max_attempts": 1,
+    "service_concurrency": 2,
+    "queue_timeout_ms": 100
+  },
+  "matrix": {
+    "scenario": ["local", "http", "a2a"],
+    "rate": [5, 20, 50],
+    "queue_capacity": [0, 8]
+  }
+}

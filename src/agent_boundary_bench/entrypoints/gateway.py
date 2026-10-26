@@ -54,6 +54,7 @@ def create_gateway(config: Config, directory: Path) -> FastAPI:
             probe,
             specialist_repetitions=config.specialist_repetitions,
             fanout_limit=config.fanout_limit,
+            resilience=config.resilience_policy(),
         )
         return {
             "accepted": result.accepted,
@@ -62,6 +63,13 @@ def create_gateway(config: Config, directory: Path) -> FastAPI:
             "tool_calls": sum(v.tool_calls for v in result.invocations),
             "resource_reads": sum(v.resource_reads for v in result.invocations),
             "context_bytes": sum(v.context_bytes for v in result.invocations),
+            "attempts": sum(v.attempts for v in result.invocations),
+            "retries": sum(v.retries for v in result.invocations),
+            "kernel_executions": sum(v.kernel_executions for v in result.invocations),
+            "idempotency_hits": sum(v.idempotency_hits for v in result.invocations),
+            "injected_failures": sum(v.injected_failures for v in result.invocations),
+            "rejections": sum(v.rejections for v in result.invocations),
+            "backpressure_wait_ms": sum(v.backpressure_wait_ms for v in result.invocations),
         }
 
     return app

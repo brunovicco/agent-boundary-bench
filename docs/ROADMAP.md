@@ -26,11 +26,15 @@ functional Docker Compose verification and dedicated [release notes](RELEASE_0.2
 
 The optional `a2a-otel-kit` treatment is not silently enabled: doing so would change the existing A2A baseline. It remains suitable for a separately declared instrumentation campaign rather than a v0.2 kernel dependency.
 
-## v0.3.0 — failures, pressure and isolation
+## v0.3.0 — in development: failures, pressure and isolation
 
-- Controlled fault injection, bounded retries, recovery and idempotent delegation IDs.
-- Sustained capacity sweeps and backpressure with an external isolated generator.
-- Process/container resource interference, failure containment and remote network topologies.
-- Advanced distributed telemetry, collector/exporter treatment matrices and lost-span accounting.
+- Implemented in the first development milestone: deterministic application-layer fault
+  injection, bounded retries, recovery, stable idempotent delegation IDs, bounded worker-local
+  cache, per-worker admission/queue controls, schema v3 counters and campaign definitions.
+- Next: sustained capacity sweeps and backpressure with an external isolated generator.
+- Next: process/container resource interference, failure containment and remote network topologies.
+- Next: advanced distributed telemetry, collector/exporter treatment matrices and lost-span accounting.
 
-v0.3 fault/pressure/isolation infrastructure is not included speculatively. Existing deadline and post-timeout recovery tests validate current behavior; they do not constitute a controlled fault-injection campaign.
+The implemented first milestone is documented in [RESILIENCE.md](RESILIENCE.md). Its native and
+real-protocol tests validate behavior, not sustained capacity or infrastructure-failure
+containment. v0.3.0 has not been released.

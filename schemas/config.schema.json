@@ -2,109 +2,17 @@
   "additionalProperties": false,
   "description": "Controlled variables for a single experimental round.",
   "properties": {
-    "scenario": {
-      "default": "local",
-      "enum": [
-        "local",
-        "http",
-        "a2a",
-        "mcp-inprocess",
-        "mcp-stdio",
-        "mcp-streamable-http"
-      ],
-      "title": "Scenario",
-      "type": "string"
-    },
-    "payload_bytes": {
-      "default": 1024,
-      "enum": [
-        1024,
-        16384,
-        131072
-      ],
-      "title": "Payload Bytes",
-      "type": "integer"
-    },
-    "wait_ms": {
-      "default": 0,
-      "enum": [
-        0,
-        50,
-        250
-      ],
-      "title": "Wait Ms",
-      "type": "integer"
-    },
-    "parallel": {
-      "default": false,
-      "title": "Parallel",
-      "type": "boolean"
-    },
-    "telemetry": {
-      "default": false,
-      "title": "Telemetry",
-      "type": "boolean"
-    },
-    "rate": {
+    "attempt_timeout": {
       "default": 5,
-      "maximum": 10000,
-      "minimum": 1,
-      "title": "Rate",
-      "type": "integer"
-    },
-    "duration": {
-      "default": 2,
       "exclusiveMinimum": 0,
       "maximum": 3600,
-      "title": "Duration",
+      "title": "Attempt Timeout",
       "type": "number"
-    },
-    "warmup": {
-      "default": 3,
-      "minimum": 1,
-      "title": "Warmup",
-      "type": "integer"
     },
     "concurrency": {
       "default": 64,
       "minimum": 1,
       "title": "Concurrency",
-      "type": "integer"
-    },
-    "timeout": {
-      "default": 5,
-      "exclusiveMinimum": 0,
-      "title": "Timeout",
-      "type": "number"
-    },
-    "seed": {
-      "default": 42,
-      "title": "Seed",
-      "type": "integer"
-    },
-    "repetition": {
-      "default": 0,
-      "minimum": 0,
-      "title": "Repetition",
-      "type": "integer"
-    },
-    "label": {
-      "default": "smoke",
-      "title": "Label",
-      "type": "string"
-    },
-    "specialist_repetitions": {
-      "default": 1,
-      "maximum": 32,
-      "minimum": 1,
-      "title": "Specialist Repetitions",
-      "type": "integer"
-    },
-    "fanout_limit": {
-      "default": 64,
-      "maximum": 128,
-      "minimum": 1,
-      "title": "Fanout Limit",
       "type": "integer"
     },
     "context_copies": {
@@ -118,11 +26,116 @@
       "title": "Context Copies",
       "type": "integer"
     },
-    "tool_repetitions": {
-      "default": 1,
-      "maximum": 16,
+    "duration": {
+      "default": 2,
+      "exclusiveMinimum": 0,
+      "maximum": 3600,
+      "title": "Duration",
+      "type": "number"
+    },
+    "fanout_limit": {
+      "default": 64,
+      "maximum": 128,
       "minimum": 1,
-      "title": "Tool Repetitions",
+      "title": "Fanout Limit",
+      "type": "integer"
+    },
+    "fault_delay_ms": {
+      "default": 100,
+      "maximum": 60000,
+      "minimum": 1,
+      "title": "Fault Delay Ms",
+      "type": "integer"
+    },
+    "fault_every": {
+      "default": 1,
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Fault Every",
+      "type": "integer"
+    },
+    "fault_mode": {
+      "default": "none",
+      "enum": [
+        "none",
+        "fail-first",
+        "delay-first",
+        "after-commit"
+      ],
+      "title": "Fault Mode",
+      "type": "string"
+    },
+    "idempotency": {
+      "default": false,
+      "title": "Idempotency",
+      "type": "boolean"
+    },
+    "idempotency_capacity": {
+      "default": 10000,
+      "maximum": 1000000,
+      "minimum": 1,
+      "title": "Idempotency Capacity",
+      "type": "integer"
+    },
+    "idempotency_ttl_seconds": {
+      "default": 300,
+      "exclusiveMinimum": 0,
+      "maximum": 86400,
+      "title": "Idempotency Ttl Seconds",
+      "type": "number"
+    },
+    "label": {
+      "default": "smoke",
+      "title": "Label",
+      "type": "string"
+    },
+    "max_attempts": {
+      "default": 1,
+      "maximum": 8,
+      "minimum": 1,
+      "title": "Max Attempts",
+      "type": "integer"
+    },
+    "parallel": {
+      "default": false,
+      "title": "Parallel",
+      "type": "boolean"
+    },
+    "payload_bytes": {
+      "default": 1024,
+      "enum": [
+        1024,
+        16384,
+        131072
+      ],
+      "title": "Payload Bytes",
+      "type": "integer"
+    },
+    "queue_capacity": {
+      "default": 0,
+      "maximum": 100000,
+      "minimum": 0,
+      "title": "Queue Capacity",
+      "type": "integer"
+    },
+    "queue_timeout_ms": {
+      "default": 1000,
+      "maximum": 60000,
+      "minimum": 1,
+      "title": "Queue Timeout Ms",
+      "type": "integer"
+    },
+    "rate": {
+      "default": 5,
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Rate",
+      "type": "integer"
+    },
+    "repetition": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Repetition",
       "type": "integer"
     },
     "resource_reads": {
@@ -130,6 +143,79 @@
       "maximum": 16,
       "minimum": 0,
       "title": "Resource Reads",
+      "type": "integer"
+    },
+    "retry_backoff_ms": {
+      "default": 0,
+      "maximum": 60000,
+      "minimum": 0,
+      "title": "Retry Backoff Ms",
+      "type": "integer"
+    },
+    "scenario": {
+      "default": "local",
+      "enum": [
+        "local",
+        "http",
+        "a2a",
+        "mcp-inprocess",
+        "mcp-stdio",
+        "mcp-streamable-http"
+      ],
+      "title": "Scenario",
+      "type": "string"
+    },
+    "seed": {
+      "default": 42,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "service_concurrency": {
+      "default": 0,
+      "maximum": 10000,
+      "minimum": 0,
+      "title": "Service Concurrency",
+      "type": "integer"
+    },
+    "specialist_repetitions": {
+      "default": 1,
+      "maximum": 32,
+      "minimum": 1,
+      "title": "Specialist Repetitions",
+      "type": "integer"
+    },
+    "telemetry": {
+      "default": false,
+      "title": "Telemetry",
+      "type": "boolean"
+    },
+    "timeout": {
+      "default": 5,
+      "exclusiveMinimum": 0,
+      "title": "Timeout",
+      "type": "number"
+    },
+    "tool_repetitions": {
+      "default": 1,
+      "maximum": 16,
+      "minimum": 1,
+      "title": "Tool Repetitions",
+      "type": "integer"
+    },
+    "wait_ms": {
+      "default": 0,
+      "enum": [
+        0,
+        50,
+        250
+      ],
+      "title": "Wait Ms",
+      "type": "integer"
+    },
+    "warmup": {
+      "default": 3,
+      "minimum": 1,
+      "title": "Warmup",
       "type": "integer"
     }
   },

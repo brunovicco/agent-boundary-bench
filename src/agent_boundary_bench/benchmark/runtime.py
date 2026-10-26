@@ -24,7 +24,7 @@ def free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-async def health(url: str, attempts: int = 100) -> int:
+async def health(url: str, attempts: int = 400) -> int:
     """Bounded health poll independent from measured requests."""
     async with httpx.AsyncClient(trust_env=False, timeout=0.5) as client:
         for _ in range(attempts):
@@ -45,7 +45,7 @@ async def runtime(
 ) -> AsyncIterator[tuple[Delegate, int | None]]:
     """Own each adapter and any one-worker process required by its boundary."""
     if config.scenario == "local":
-        yield LocalDelegate(probe), None
+        yield LocalDelegate(probe, config.resilience_policy()), None
         return
     if config.scenario in ("mcp-inprocess", "mcp-stdio"):
         mcp_delegate = MCPDelegate(
@@ -87,6 +87,28 @@ async def runtime(
             "--port",
             str(port),
         ]
+        policy = config.resilience_policy()
+        if policy.enabled:
+            command += [
+                "--fault-mode",
+                policy.fault_mode,
+                "--fault-every",
+                str(policy.fault_every),
+                "--fault-delay-ms",
+                str(policy.fault_delay_ms),
+                "--idempotency-capacity",
+                str(policy.idempotency_capacity),
+                "--idempotency-ttl-seconds",
+                str(policy.idempotency_ttl_seconds),
+                "--service-concurrency",
+                str(policy.service_concurrency),
+                "--queue-capacity",
+                str(policy.queue_capacity),
+                "--queue-timeout-ms",
+                str(policy.queue_timeout_ms),
+            ]
+            if policy.idempotency:
+                command.append("--idempotency")
     if config.telemetry:
         command += ["--trace-file", str(directory / "specialist-spans.jsonl")]
     with (directory / "specialist.log").open("w", encoding="utf-8") as logfile:

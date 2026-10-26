@@ -1,0 +1,23 @@
+{
+  "label": "backpressure-full",
+  "seed": 42,
+  "repetitions": 5,
+  "defaults": {
+    "payload_bytes": 1024,
+    "wait_ms": 50,
+    "parallel": true,
+    "duration": 30,
+    "warmup": 5,
+    "concurrency": 128,
+    "timeout": 3,
+    "max_attempts": 1,
+    "service_concurrency": 4,
+    "queue_timeout_ms": 250
+  },
+  "matrix": {
+    "scenario": ["local", "http", "a2a"],
+    "telemetry": [false, true],
+    "rate": [5, 20, 50],
+    "queue_capacity": [0, 8, 32]
+  }
+}

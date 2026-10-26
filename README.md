@@ -7,9 +7,13 @@
 
 A reproducible laboratory asking: **what changes when the same operation crosses a process and protocol boundary?** Synthetic corporate credit analysis runs through delegation boundaries (in-process Python, conventional HTTP and A2A JSON-RPC) and separate MCP tool-access boundaries (SDK direct dispatch, stdio and Streamable HTTP). No LLM, commercial key, database or real financial data is used.
 
-[Português](README.pt-BR.md) · [v0.2.0 release notes](docs/RELEASE_0.2.0.md) · [Methodology](docs/METHODOLOGY.md) · [Compatibility research](docs/COMPATIBILITY.md) · [Validation](VALIDATION.md)
+[Português](README.pt-BR.md) · [v0.2.0 release notes](docs/RELEASE_0.2.0.md) · [v0.3 development](docs/RESILIENCE.md) · [Methodology](docs/METHODOLOGY.md) · [Compatibility research](docs/COMPATIBILITY.md) · [Validation](VALIDATION.md)
 
 **Current release: v0.2.0.** It extends the v0.1 delegation laboratory with official MCP Python SDK v2 tools/resources, bounded generalized fan-out/fan-in and controlled context/access amplification. See [the release notes](docs/RELEASE_0.2.0.md) for the delivered scope and [the validation record](VALIDATION.md) for exactly what ran. A smoke or pilot result does not establish saturation or a general architecture ranking.
+
+**Active development: `0.3.0.dev0`.** The `feat/v0.3.0` line adds controlled delegation faults,
+bounded retries, stable idempotency IDs and service backpressure. This is development scope, not
+a published v0.3 release or sustained-failure evidence. See [RESILIENCE.md](docs/RESILIENCE.md).
 
 ## The experiment
 
@@ -52,6 +56,8 @@ A2A delegates work to an independently exposed agent. MCP exposes tools, resourc
 2. Larger bodies and more delegations can amplify serialization and transport costs.
 3. Concurrent delegation may reduce elapsed wait while increasing in-flight demand.
 4. Instrumentation/export settings can measurably affect latency and resources.
+5. Retry can recover availability while duplicating work unless the delegated operation has an
+   explicit idempotency strategy.
 
 These require matched conditions and repetitions. An artificial async wait models waiting, not CPU work or LLM inference.
 
@@ -83,6 +89,12 @@ uv run abb campaign --config experiments/mcp-pilot.json --output results/mcp-pil
 uv run abb campaign --config experiments/mcp-full.json --output results/mcp-full
 uv run abb campaign --config experiments/mcp-amplification-full.json \
   --output results/mcp-amplification
+uv run abb campaign --config experiments/resilience-smoke.json \
+  --output results/resilience-smoke
+uv run abb campaign --config experiments/timeout-smoke.json \
+  --output results/timeout-smoke
+uv run abb campaign --config experiments/backpressure-smoke.json \
+  --output results/backpressure-smoke
 uv run abb report --input results/full --output reports/full
 ```
 
@@ -96,6 +108,18 @@ uv run abb run --scenario mcp-streamable-http --payload-bytes 16384 \
   --specialist-repetitions 4 --parallel --fanout-limit 8 \
   --rate 20 --duration 10 --output results/mcp-example
 ```
+
+Example v0.3 development recovery treatment:
+
+```bash
+uv run abb run --scenario a2a --profile smoke \
+  --fault-mode after-commit --max-attempts 2 --attempt-timeout 1 \
+  --idempotency --output results/v030-a2a-after-commit
+```
+
+The unchanged business result is insufficient evidence on its own: inspect `attempts`, `retries`,
+`kernel_executions`, `idempotency_hits`, `injected_failures`, `rejections` and
+`backpressure_wait_ms` in schema v3 raw data and reports.
 
 Campaign order is shuffled independently within each repetition using an explicit seed. `campaign.json` stores the planned order and completed rounds. Use a new output directory for each campaign. Failed warmup/startup aborts visibly; incomplete round directories lack a completed manifest and must not be treated as results.
 
@@ -133,7 +157,7 @@ Stop terminal 1 with Ctrl-C. Repeat for any of the six scenarios. k6 uses `const
 
 ## Data and interpretation
 
-Each completed round contains `manifest.json`, `samples.jsonl`, `resources.jsonl`, and spans when enabled. Reports verify schemas, counts, contiguous sample IDs and file hashes before calculating P50/P95/P99, mean, median, throughput, failures, timeouts, body bytes, calls, CPU seconds and sampled peak RSS. `telemetry-deltas.csv` contains unique matched on/off pairs; `span-summary.csv` excludes warmup through measured trace IDs. Percentiles describe successful offered-arrival-to-completion latency, including scheduler lag. Errors/drops are reported separately. See [schemas and definitions](docs/RESULTS_SCHEMA.md).
+Each completed round contains `manifest.json`, `samples.jsonl`, `resources.jsonl`, and spans when enabled. Reports verify schemas, counts, contiguous sample IDs and file hashes before calculating P50/P95/P99, mean, median, throughput, failures, timeouts, body bytes, calls, retry/idempotency/admission counters, CPU seconds and sampled peak RSS. `telemetry-deltas.csv` contains unique matched on/off pairs; `span-summary.csv` excludes warmup through measured trace IDs. Percentiles describe successful offered-arrival-to-completion latency, including scheduler lag. Errors/drops/rejections are reported separately. See [schemas and definitions](docs/RESULTS_SCHEMA.md).
 
 `0` bytes/calls means no boundary activity for local success; `null` means unmeasured or unavailable, especially partial failed executions. HTTP/A2A byte fields are observed HTTP bodies. MCP byte fields are explicit tool arguments, text results and resource URI/content; they exclude JSON-RPC/HTTP framing. `context_bytes`, `tool_calls` and `resource_reads` expose amplification directly. The manifest records this scope, so unlike byte definitions must not be silently pooled. No subtraction of means is presented as a causal network decomposition.
 
@@ -164,6 +188,6 @@ Use [real recorded evidence](VALIDATION.md) within its limits. General conclusio
 
 `domain/` owns rules and fixtures; `application/` owns orchestration and ports; `adapters/` owns transport translation; `benchmark/`, `observability/` and `reporting/` own experiment mechanics. `entrypoints/` composes them. Architecture checks enforce inward dependency direction.
 
-Generated from [codex-python-engineering-harness](https://github.com/brunovicco/codex-python-engineering-harness), service profile, with exact provenance in [HARNESS.md](docs/HARNESS.md). [ADRs](docs/adr/) explain design trade-offs. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [ROADMAP.md](docs/ROADMAP.md) and the [v0.2.0 release notes](docs/RELEASE_0.2.0.md). CI runs functional checks and never publishes shared-runner timings as comparable benchmarks.
+Generated from [codex-python-engineering-harness](https://github.com/brunovicco/codex-python-engineering-harness), service profile, with exact provenance in [HARNESS.md](docs/HARNESS.md). [ADRs](docs/adr/) explain design trade-offs. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [ROADMAP.md](docs/ROADMAP.md), the [v0.2.0 release notes](docs/RELEASE_0.2.0.md) and [v0.3 development scope](docs/RESILIENCE.md). CI runs functional checks and never publishes shared-runner timings as comparable benchmarks.
 
 The canonical public repository is [brunovicco/agent-boundary-bench](https://github.com/brunovicco/agent-boundary-bench). Recovery bundles are export artifacts only and are not configured as the normal Git remote.

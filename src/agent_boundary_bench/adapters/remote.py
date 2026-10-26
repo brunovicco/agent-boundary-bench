@@ -1,5 +1,6 @@
 """Persistent HTTP/1.1 and A2A JSON-RPC clients with equivalent connection limits."""
 
+import asyncio
 from contextvars import ContextVar
 from dataclasses import dataclass
 from time import perf_counter
@@ -7,9 +8,11 @@ from uuid import uuid4
 
 import httpx
 from a2a.client import A2ACardResolver, Client, ClientConfig, ClientFactory
+from a2a.client.errors import A2AClientTimeoutError
 from a2a.types import Message, Part, Role, SendMessageConfiguration, SendMessageRequest
 
 from agent_boundary_bench.adapters.contracts import TASK, Reply
+from agent_boundary_bench.application.resilience import AttemptMetrics, DelegationFailure
 from agent_boundary_bench.application.supervisor import Invocation, Probe
 from agent_boundary_bench.domain.credit import AnalysisTask
 from agent_boundary_bench.observability import headers
@@ -75,10 +78,18 @@ class RemoteDelegate:
                 )
             ).create(card)
 
-    async def invoke(self, task: AnalysisTask) -> Invocation:
+    async def invoke(
+        self,
+        task: AnalysisTask,
+        *,
+        delegation_id: str | None = None,
+        attempt: int = 1,
+    ) -> Invocation:
         """Send identical business JSON through the selected boundary."""
         wire = Wire()
         token = wire_context.set(wire)
+        encode_ms = 0.0
+        transport_started: float | None = None
         try:
             with self.probe.span("delegation." + self.scenario):
                 start = perf_counter()
@@ -86,24 +97,41 @@ class RemoteDelegate:
                     payload = TASK.dump_json(task)
                 encode_ms = (perf_counter() - start) * 1000
                 start = perf_counter()
+                transport_started = start
                 with self.probe.span("transport.client"):
                     if self.scenario == "http":
+                        request_headers = {"content-type": "application/json"}
+                        if delegation_id is not None:
+                            request_headers.update(
+                                {
+                                    "x-abb-delegation-id": delegation_id,
+                                    "x-abb-attempt": str(attempt),
+                                }
+                            )
                         response = await self.http.post(
                             self.url + "/analyze",
                             content=payload,
-                            headers={"content-type": "application/json"},
+                            headers=request_headers,
                         )
                         response.raise_for_status()
                         reply_json = response.content
                     else:
                         if self.a2a is None:
                             raise RuntimeError("prepare A2A client before delegation")
+                        message = Message(
+                            message_id=str(uuid4()),
+                            role=Role.ROLE_USER,
+                            parts=[Part(text=payload.decode(), media_type="application/json")],
+                        )
+                        if delegation_id is not None:
+                            message.metadata.update(
+                                {
+                                    "abb_delegation_id": delegation_id,
+                                    "abb_attempt": attempt,
+                                }
+                            )
                         request = SendMessageRequest(
-                            message=Message(
-                                message_id=str(uuid4()),
-                                role=Role.ROLE_USER,
-                                parts=[Part(text=payload.decode(), media_type="application/json")],
-                            ),
+                            message=message,
                             configuration=SendMessageConfiguration(return_immediately=False),
                         )
                         reply_json = b""
@@ -117,6 +145,27 @@ class RemoteDelegate:
                 with self.probe.span("serialization.decode"):
                     reply = Reply.model_validate_json(reply_json)
                 serialization_ms = encode_ms + (perf_counter() - start) * 1000
+                metrics = AttemptMetrics(
+                    remote_calls=wire.calls,
+                    request_bytes=wire.request_bytes,
+                    response_bytes=wire.response_bytes,
+                    serialization_ms=serialization_ms,
+                    transport_ms=transport_ms,
+                    specialist_ms=reply.specialist_ms,
+                    kernel_executions=reply.kernel_executions,
+                    idempotency_hits=reply.idempotency_hits,
+                    injected_failures=reply.injected_failures,
+                    rejections=reply.rejections,
+                    backpressure_wait_ms=reply.backpressure_wait_ms,
+                )
+                if reply.error is not None:
+                    raise DelegationFailure(
+                        reply.error,
+                        transient=reply.transient,
+                        metrics=metrics,
+                    )
+                if reply.result is None:
+                    raise ValueError("specialist returned no business result")
                 return Invocation(
                     reply.result,
                     reply.specialist_ms,
@@ -125,7 +174,80 @@ class RemoteDelegate:
                     serialization_ms,
                     transport_ms,
                     wire.calls,
+                    kernel_executions=reply.kernel_executions,
+                    idempotency_hits=reply.idempotency_hits,
+                    injected_failures=reply.injected_failures,
+                    rejections=reply.rejections,
+                    backpressure_wait_ms=reply.backpressure_wait_ms,
                 )
+        except asyncio.CancelledError as exc:
+            if delegation_id is None:
+                raise
+            transport_ms = (
+                (perf_counter() - transport_started) * 1000
+                if transport_started is not None
+                else 0.0
+            )
+            raise DelegationFailure(
+                "attempt_timeout",
+                transient=True,
+                metrics=AttemptMetrics(
+                    remote_calls=wire.calls,
+                    request_bytes=wire.request_bytes,
+                    response_bytes=wire.response_bytes,
+                    serialization_ms=encode_ms,
+                    transport_ms=transport_ms,
+                ),
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            transient = exc.response.status_code in (429, 502, 503, 504)
+            raise DelegationFailure(
+                f"http_{exc.response.status_code}",
+                transient=transient,
+                metrics=AttemptMetrics(
+                    remote_calls=wire.calls,
+                    request_bytes=wire.request_bytes,
+                    response_bytes=wire.response_bytes,
+                    serialization_ms=encode_ms,
+                    transport_ms=(
+                        (perf_counter() - transport_started) * 1000
+                        if transport_started is not None
+                        else 0.0
+                    ),
+                ),
+            ) from exc
+        except A2AClientTimeoutError as exc:
+            raise DelegationFailure(
+                "transport_timeout",
+                transient=True,
+                metrics=AttemptMetrics(
+                    remote_calls=wire.calls,
+                    request_bytes=wire.request_bytes,
+                    response_bytes=wire.response_bytes,
+                    serialization_ms=encode_ms,
+                    transport_ms=(
+                        (perf_counter() - transport_started) * 1000
+                        if transport_started is not None
+                        else 0.0
+                    ),
+                ),
+            ) from exc
+        except (httpx.TimeoutException, httpx.TransportError) as exc:
+            raise DelegationFailure(
+                "transport_failure",
+                transient=True,
+                metrics=AttemptMetrics(
+                    remote_calls=wire.calls,
+                    request_bytes=wire.request_bytes,
+                    response_bytes=wire.response_bytes,
+                    serialization_ms=encode_ms,
+                    transport_ms=(
+                        (perf_counter() - transport_started) * 1000
+                        if transport_started is not None
+                        else 0.0
+                    ),
+                ),
+            ) from exc
         finally:
             wire_context.reset(token)
 

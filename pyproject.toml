@@ -1,6 +1,6 @@
 [project]
 name = "agent-boundary-bench"
-version = "0.2.0"
+version = "0.3.0.dev0"
 description = "Reproducible experiments across agent delegation and MCP tool-access boundaries"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"

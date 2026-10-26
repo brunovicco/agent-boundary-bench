@@ -6,6 +6,11 @@ The v0.1 native measurements use commit `5eefbd76`; the MCP v0.2 native measurem
 Full SHAs and lock hashes are retained in the manifests. Every published measurement reports
 `git_dirty=false`; aborted or dirty development attempts are not included.
 
+The v0.3 campaign definitions (`resilience-*`, `timeout-*` and `backpressure-*`) are executable
+plans only.
+No v0.3 measurement directory is committed yet, and no v0.2 result is relabeled as fault,
+recovery, idempotency or saturation evidence.
+
 | Dataset | Rounds | Successful executions | Purpose |
 |---|---:|---:|---|
 | pilot | 30 | 1200 | 5 repeats, minimal workload, 1 KiB, 20 RPS, sequential, OTel off/on |
@@ -38,3 +43,19 @@ include process CPU/RSS where public process ownership permits it; the official 
 does not expose its child PID. Supplemental k6 smoke has no process resource collection, as
 stated in its manifests. This host is shared, not an isolated performance rig. Independent
 per-round results/outliers are deliberately preserved.
+
+For v0.3 development, start with:
+
+```bash
+uv run abb campaign --config experiments/resilience-smoke.json \
+  --output results/resilience-smoke
+uv run abb campaign --config experiments/timeout-smoke.json \
+  --output results/timeout-smoke
+uv run abb campaign --config experiments/backpressure-smoke.json \
+  --output results/backpressure-smoke
+```
+
+`resilience-full.json` defines 1,920 rounds, `timeout-full.json` defines 120 rounds and
+`backpressure-full.json` defines 270 rounds,
+all with five repetitions. Do not run them concurrently or publish shared-runner timings as
+capacity evidence. See [the resilience methodology](../docs/RESILIENCE.md).

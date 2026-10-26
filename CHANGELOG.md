@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — 0.3.0.dev0
+
+- Added deterministic `fail-first`, `delay-first` and `after-commit` delegation treatments.
+- Added bounded transient retries with explicit per-attempt timeout and fixed backoff.
+- Added stable delegation IDs across attempts and bounded worker-local idempotency cache controls.
+- Added service concurrency, bounded queue, admission timeout and overload rejection controls.
+- Added raw schema v3 counters for attempts, retries, kernel executions, cache hits, injected failures, rejections and admission wait.
+- Added real local, HTTP and official A2A recovery/idempotency integration tests.
+- Added resilience/backpressure smoke and five-repeat full campaign definitions.
+- Separated timeout treatments from the general resilience matrix to avoid classifying ordinary
+  transport jitter as an injected timeout.
+- Kept MCP v2 tool access separate from the delegation-resilience experiment family.
+
+Resource-isolation campaigns, cross-host network faults, sustained isolated capacity evidence and
+advanced collector/exporter loss accounting remain in development.
+
 ## 0.2.0 — 2026-10-25
 
 - First public release of the reproducible Agent Boundary Bench laboratory.

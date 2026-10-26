@@ -2,44 +2,45 @@
   "additionalProperties": false,
   "description": "One offered arrival, including explicit generator drops and failures.",
   "properties": {
-    "schema_version": {
-      "default": "2",
-      "title": "Schema Version",
-      "type": "string"
-    },
-    "index": {
-      "title": "Index",
-      "type": "integer"
-    },
-    "scheduled_ms": {
-      "title": "Scheduled Ms",
-      "type": "number"
-    },
-    "started_ms": {
-      "title": "Started Ms",
-      "type": "number"
-    },
-    "scheduler_lag_ms": {
-      "title": "Scheduler Lag Ms",
-      "type": "number"
-    },
     "arrival_latency_ms": {
       "title": "Arrival Latency Ms",
       "type": "number"
     },
-    "service_duration_ms": {
-      "title": "Service Duration Ms",
-      "type": "number"
-    },
-    "status": {
-      "enum": [
-        "ok",
-        "error",
-        "timeout",
-        "dropped"
+    "attempts": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "title": "Status",
-      "type": "string"
+      "default": null,
+      "title": "Attempts"
+    },
+    "backpressure_wait_ms": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Backpressure Wait Ms"
+    },
+    "context_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Context Bytes"
     },
     "error": {
       "anyOf": [
@@ -53,12 +54,57 @@
       "default": null,
       "title": "Error"
     },
-    "specialist_ms": {
-      "items": {
-        "type": "number"
-      },
-      "title": "Specialist Ms",
-      "type": "array"
+    "idempotency_hits": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Idempotency Hits"
+    },
+    "index": {
+      "title": "Index",
+      "type": "integer"
+    },
+    "injected_failures": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Injected Failures"
+    },
+    "kernel_executions": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Kernel Executions"
+    },
+    "rejections": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rejections"
     },
     "remote_calls": {
       "anyOf": [
@@ -84,6 +130,18 @@
       "default": null,
       "title": "Request Bytes"
     },
+    "resource_reads": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resource Reads"
+    },
     "response_bytes": {
       "anyOf": [
         {
@@ -95,6 +153,31 @@
       ],
       "default": null,
       "title": "Response Bytes"
+    },
+    "retries": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retries"
+    },
+    "scheduled_ms": {
+      "title": "Scheduled Ms",
+      "type": "number"
+    },
+    "scheduler_lag_ms": {
+      "title": "Scheduler Lag Ms",
+      "type": "number"
+    },
+    "schema_version": {
+      "default": "3",
+      "title": "Schema Version",
+      "type": "string"
     },
     "serialization_ms": {
       "anyOf": [
@@ -108,29 +191,30 @@
       "default": null,
       "title": "Serialization Ms"
     },
-    "transport_ms": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Transport Ms"
+    "service_duration_ms": {
+      "title": "Service Duration Ms",
+      "type": "number"
     },
-    "trace_id": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
+    "specialist_ms": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Specialist Ms",
+      "type": "array"
+    },
+    "started_ms": {
+      "title": "Started Ms",
+      "type": "number"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "error",
+        "timeout",
+        "dropped"
       ],
-      "default": null,
-      "title": "Trace Id"
+      "title": "Status",
+      "type": "string"
     },
     "tool_calls": {
       "anyOf": [
@@ -144,29 +228,29 @@
       "default": null,
       "title": "Tool Calls"
     },
-    "resource_reads": {
+    "trace_id": {
       "anyOf": [
         {
-          "type": "integer"
+          "type": "string"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Resource Reads"
+      "title": "Trace Id"
     },
-    "context_bytes": {
+    "transport_ms": {
       "anyOf": [
         {
-          "type": "integer"
+          "type": "number"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Context Bytes"
+      "title": "Transport Ms"
     }
   },
   "required": [

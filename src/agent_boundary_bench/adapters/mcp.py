@@ -1,5 +1,6 @@
 """Official MCP v2 tool/resource adapters for three distinct transport boundaries."""
 
+import asyncio
 import os
 import sys
 from collections.abc import Mapping
@@ -19,6 +20,7 @@ from mcp_types import RequestParamsMeta, TextContent, TextResourceContents
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from agent_boundary_bench import __version__
 from agent_boundary_bench.adapters.contracts import TASK, Reply
 from agent_boundary_bench.application.supervisor import Invocation, NullProbe, Probe
 from agent_boundary_bench.domain.credit import AnalysisTask, canonical, execute, fixture
@@ -61,7 +63,7 @@ def create_mcp_server(telemetry: Telemetry | None = None) -> MCPServer[dict[str,
     server: MCPServer[dict[str, Any]] = MCPServer(
         "agent-boundary-bench-tools",
         description="Synthetic credit tools for boundary experiments",
-        version="0.2.0",
+        version=__version__,
         middleware=middleware,
         subscriptions=False,
         log_level="WARNING",
@@ -80,7 +82,11 @@ def create_mcp_server(telemetry: Telemetry | None = None) -> MCPServer[dict[str,
         with probe.span("specialist.process"):
             started = perf_counter()
             result = await execute(task)
-            reply = Reply(result=result, specialist_ms=(perf_counter() - started) * 1000)
+            reply = Reply(
+                result=result,
+                specialist_ms=(perf_counter() - started) * 1000,
+                kernel_executions=1,
+            )
         return reply.model_dump_json()
 
     @server.resource(
@@ -98,7 +104,7 @@ def create_mcp_server(telemetry: Telemetry | None = None) -> MCPServer[dict[str,
             {
                 "status": "ok",
                 "scenario": "mcp-streamable-http",
-                "version": "0.2.0",
+                "version": __version__,
                 "procfs_pid": str(procfs_pid()),
             }
         )
@@ -141,6 +147,7 @@ class MCPDelegate:
     async def prepare(self) -> None:
         """Connect once and move protocol discovery/listing outside warmup and measurement."""
         telemetry = self.probe if isinstance(self.probe, Telemetry) else None
+        prepare_timeout = max(20.0, self.timeout)
         target: object
         if self.scenario == "mcp-inprocess":
             target = create_mcp_server(telemetry)
@@ -172,7 +179,7 @@ class MCPDelegate:
                 raise ValueError("Streamable HTTP requires a URL")
             http = await self.stack.enter_async_context(
                 httpx2.AsyncClient(
-                    timeout=httpx2.Timeout(self.timeout),
+                    timeout=httpx2.Timeout(prepare_timeout),
                     trust_env=False,
                     http2=False,
                     limits=httpx2.Limits(
@@ -186,7 +193,7 @@ class MCPDelegate:
                 http_client=http,
                 terminate_on_close=False,
             )
-        client = Client(target, read_timeout_seconds=self.timeout, cache=None)
+        client = Client(target, read_timeout_seconds=prepare_timeout, cache=None)
         self.client = await self.stack.enter_async_context(client)
         self.protocol_version = self.client.protocol_version
         if self.protocol_version != MCP_PROTOCOL_VERSION:
@@ -201,8 +208,15 @@ class MCPDelegate:
         ):
             raise RuntimeError("MCP fixture resource template is unavailable")
 
-    async def invoke(self, task: AnalysisTask) -> Invocation:
+    async def invoke(
+        self,
+        task: AnalysisTask,
+        *,
+        delegation_id: str | None = None,
+        attempt: int = 1,
+    ) -> Invocation:
         """Call tools/resources repeatedly while returning one oracle-compatible result."""
+        del delegation_id, attempt  # Resilience treatments belong to the delegation family.
         if self.client is None:
             raise RuntimeError("prepare MCP client before tool access")
         request_bytes = 0
@@ -246,6 +260,8 @@ class MCPDelegate:
                 with self.probe.span("serialization.decode"):
                     reply = Reply.model_validate_json(reply_json)
                 serialization_ms += (perf_counter() - started) * 1000
+                if reply.error is not None or reply.result is None:
+                    raise ValueError("MCP tool returned a controlled delegation failure")
                 if selected is not None and reply.result != selected.result:
                     raise ValueError("repeated MCP tool calls returned different business results")
                 selected = reply
@@ -255,11 +271,12 @@ class MCPDelegate:
             for _ in range(self.resource_reads):
                 started = perf_counter()
                 with self.probe.span("transport.client.resource"):
-                    resource = await self.client.read_resource(
-                        resource_uri,
-                        meta=trace_metadata(self.trace_enabled),
-                        cache_mode="bypass",
-                    )
+                    async with asyncio.timeout(self.timeout):
+                        resource = await self.client.read_resource(
+                            resource_uri,
+                            meta=trace_metadata(self.trace_enabled),
+                            cache_mode="bypass",
+                        )
                 transport_ms += (perf_counter() - started) * 1000
                 request_bytes += len(resource_uri.encode())
                 if len(resource.contents) != 1 or not isinstance(
@@ -273,8 +290,11 @@ class MCPDelegate:
 
         if selected is None:
             raise RuntimeError("MCP tool repetition count produced no result")
+        selected_result = selected.result
+        if selected_result is None:
+            raise RuntimeError("MCP tool repetition produced no business result")
         return Invocation(
-            selected.result,
+            selected_result,
             specialist_ms,
             request_bytes,
             response_bytes,
@@ -284,6 +304,7 @@ class MCPDelegate:
             self.tool_repetitions,
             self.resource_reads,
             len(task_payload) * self.context_copies * self.tool_repetitions,
+            kernel_executions=self.tool_repetitions,
         )
 
     async def close(self) -> None:

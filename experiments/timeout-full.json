@@ -1,0 +1,25 @@
+{
+  "label": "timeout-full",
+  "seed": 42,
+  "repetitions": 5,
+  "defaults": {
+    "wait_ms": 0,
+    "rate": 5,
+    "duration": 10,
+    "warmup": 3,
+    "concurrency": 32,
+    "timeout": 12,
+    "fault_mode": "delay-first",
+    "fault_delay_ms": 2000,
+    "max_attempts": 2,
+    "attempt_timeout": 1,
+    "retry_backoff_ms": 1500,
+    "idempotency": false
+  },
+  "matrix": {
+    "scenario": ["local", "http", "a2a"],
+    "payload_bytes": [1024, 16384],
+    "parallel": [false, true],
+    "telemetry": [false, true]
+  }
+}

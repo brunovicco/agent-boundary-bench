@@ -33,7 +33,7 @@ http-server = [
 
 [[package]]
 name = "agent-boundary-bench"
-version = "0.2.0"
+version = "0.3.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "a2a-sdk", extra = ["http-server"] },

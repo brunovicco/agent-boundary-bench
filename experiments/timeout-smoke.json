@@ -1,0 +1,25 @@
+{
+  "label": "timeout-smoke",
+  "seed": 42,
+  "repetitions": 1,
+  "defaults": {
+    "payload_bytes": 1024,
+    "wait_ms": 0,
+    "parallel": false,
+    "telemetry": false,
+    "rate": 1,
+    "duration": 0.2,
+    "warmup": 1,
+    "concurrency": 8,
+    "timeout": 12,
+    "fault_mode": "delay-first",
+    "fault_delay_ms": 2000,
+    "max_attempts": 2,
+    "attempt_timeout": 1,
+    "retry_backoff_ms": 1500,
+    "idempotency": false
+  },
+  "matrix": {
+    "scenario": ["local", "http", "a2a"]
+  }
+}
