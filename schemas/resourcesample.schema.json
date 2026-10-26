@@ -1,14 +1,219 @@
 {
   "additionalProperties": false,
-  "description": "OS process sample; CPU seconds are cumulative, RSS is instantaneous.",
+  "description": "OS process/cgroup sample; cumulative and instantaneous fields remain distinct.",
   "properties": {
+    "cgroup_version": {
+      "anyOf": [
+        {
+          "const": "v2",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cgroup Version"
+    },
+    "cpu_limit_cores": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu Limit Cores"
+    },
+    "cpu_nr_periods": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu Nr Periods"
+    },
+    "cpu_nr_throttled": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu Nr Throttled"
+    },
     "cpu_seconds": {
       "title": "Cpu Seconds",
       "type": "number"
     },
+    "cpu_system_usec": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu System Usec"
+    },
+    "cpu_throttled_usec": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu Throttled Usec"
+    },
+    "cpu_usage_usec": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu Usage Usec"
+    },
+    "cpu_user_usec": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu User Usec"
+    },
     "elapsed_ms": {
       "title": "Elapsed Ms",
       "type": "number"
+    },
+    "memory_current_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Current Bytes"
+    },
+    "memory_events_high": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Events High"
+    },
+    "memory_events_low": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Events Low"
+    },
+    "memory_events_max": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Events Max"
+    },
+    "memory_events_oom": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Events Oom"
+    },
+    "memory_events_oom_group_kill": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Events Oom Group Kill"
+    },
+    "memory_events_oom_kill": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Events Oom Kill"
+    },
+    "memory_limit_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Limit Bytes"
+    },
+    "memory_peak_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Peak Bytes"
     },
     "pid": {
       "title": "Pid",
@@ -25,6 +230,11 @@
     "rss_bytes": {
       "title": "Rss Bytes",
       "type": "integer"
+    },
+    "schema_version": {
+      "default": "2",
+      "title": "Schema Version",
+      "type": "string"
     }
   },
   "required": [

@@ -12,9 +12,19 @@
 - Separated timeout treatments from the general resilience matrix to avoid classifying ordinary
   transport jitter as an injected timeout.
 - Kept MCP v2 tool access separate from the delegation-resilience experiment family.
+- Added a container resource-isolation topology with independently configurable harness and
+  specialist CPU/memory limits.
+- Added deterministic fixed-iteration CPU work and fixed touched memory allocations without
+  conflating either with synthetic async waits.
+- Added schema v4 cgroup v2 CPU quota/usage/throttling, memory limit/peak/event observations and
+  explicit resource-sampling failure accounting.
+- Added resource-isolation smoke/full matrices, integrity-checked reporting and ADR 0008.
+- Made control-plane sampling loss explicit and bounded so CPU starvation remains observable
+  without fabricating missing resource samples.
 
-Resource-isolation campaigns, cross-host network faults, sustained isolated capacity evidence and
-advanced collector/exporter loss accounting remain in development.
+Cross-host network faults, sustained isolated capacity evidence and advanced collector/exporter
+loss accounting remain in development. No resource-isolation benchmark result is claimed until
+the container campaigns are executed and their raw evidence is reviewed.
 
 ## 0.2.0 — 2026-10-25
 

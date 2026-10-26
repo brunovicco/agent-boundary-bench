@@ -31,10 +31,13 @@ The optional `a2a-otel-kit` treatment is not silently enabled: doing so would ch
 - Implemented in the first development milestone: deterministic application-layer fault
   injection, bounded retries, recovery, stable idempotent delegation IDs, bounded worker-local
   cache, per-worker admission/queue controls, schema v3 counters and campaign definitions.
+- Implemented in the resource-isolation milestone: explicit deterministic CPU work, Compose
+  harness/specialist cgroups, observed cgroup v2 CPU/memory counters, schema v4, report fields and
+  factorized smoke/full campaign definitions.
 - Next: sustained capacity sweeps and backpressure with an external isolated generator.
-- Next: process/container resource interference, failure containment and remote network topologies.
+- Next: process crash/containment and remote network topologies.
 - Next: advanced distributed telemetry, collector/exporter treatment matrices and lost-span accounting.
 
-The implemented first milestone is documented in [RESILIENCE.md](RESILIENCE.md). Its native and
-real-protocol tests validate behavior, not sustained capacity or infrastructure-failure
-containment. v0.3.0 has not been released.
+The implemented milestones are documented in [RESILIENCE.md](RESILIENCE.md) and
+[RESOURCE_ISOLATION.md](RESOURCE_ISOLATION.md). Tests validate behavior and measurement wiring,
+not sustained capacity or infrastructure-failure containment. v0.3.0 has not been released.

@@ -36,7 +36,7 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
     if manifest.offered != math.ceil(manifest.config.rate * manifest.config.duration):
         raise ValueError("manifest offered count differs from scheduled workload")
     if (
-        manifest.schema_version == "3"
+        manifest.schema_version in ("3", "4")
         and manifest.warmup_succeeded + manifest.warmup_failed != manifest.config.warmup
     ):
         raise ValueError("manifest warmup counts differ from configured warmup")
@@ -57,11 +57,16 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
         ResourceSample.model_validate_json(line)
         for line in (directory / "resources.jsonl").read_text().splitlines()
     ]
+    isolation = manifest.environment.get("resource_isolation")
+    isolation_label = isolation.get("label") if isinstance(isolation, dict) else None
     row: dict[str, str | int | float | None] = {
         "run_id": manifest.run_id,
         "scenario": manifest.config.scenario,
         "payload_bytes": manifest.config.payload_bytes,
         "wait_ms": manifest.config.wait_ms,
+        "cpu_iterations": manifest.config.cpu_iterations,
+        "memory_bytes": manifest.config.memory_bytes,
+        "isolation_label": isolation_label if isinstance(isolation_label, str) else None,
         "mode": "parallel" if manifest.config.parallel else "sequential",
         "telemetry": str(manifest.config.telemetry).lower(),
         "target_rps": manifest.config.rate,
@@ -135,6 +140,44 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
         row[role + "_cpu_seconds"] = (
             points[-1].cpu_seconds - points[0].cpu_seconds if points else None
         )
+        for field, output_field, scale in (
+            ("cpu_usage_usec", "_cgroup_cpu_seconds", 1_000_000),
+            ("cpu_user_usec", "_cgroup_cpu_user_seconds", 1_000_000),
+            ("cpu_system_usec", "_cgroup_cpu_system_seconds", 1_000_000),
+            ("cpu_throttled_usec", "_cgroup_throttled_seconds", 1_000_000),
+            ("cpu_nr_periods", "_cgroup_nr_periods", 1),
+            ("cpu_nr_throttled", "_cgroup_nr_throttled", 1),
+            ("memory_events_high", "_cgroup_memory_high", 1),
+            ("memory_events_max", "_cgroup_memory_max", 1),
+            ("memory_events_oom", "_cgroup_oom", 1),
+            ("memory_events_oom_kill", "_cgroup_oom_kill", 1),
+            ("memory_events_oom_group_kill", "_cgroup_oom_group_kill", 1),
+        ):
+            values = [getattr(point, field) for point in points]
+            present = [value for value in values if value is not None]
+            row[role + output_field] = (
+                (present[-1] - present[0]) / scale if len(present) >= 2 else None
+            )
+        memory_values = [
+            point.memory_current_bytes for point in points if point.memory_current_bytes is not None
+        ]
+        peak_values = [
+            point.memory_peak_bytes for point in points if point.memory_peak_bytes is not None
+        ]
+        limits = {
+            point.memory_limit_bytes for point in points if point.memory_limit_bytes is not None
+        }
+        cpu_limits = {
+            point.cpu_limit_cores for point in points if point.cpu_limit_cores is not None
+        }
+        row[role + "_cgroup_memory_current_peak_bytes"] = (
+            max(memory_values) if memory_values else None
+        )
+        row[role + "_cgroup_memory_peak_bytes"] = max(peak_values) if peak_values else None
+        row[role + "_cgroup_memory_limit_bytes"] = next(iter(limits)) if len(limits) == 1 else None
+        row[role + "_cgroup_cpu_limit_cores"] = (
+            next(iter(cpu_limits)) if len(cpu_limits) == 1 else None
+        )
     return row
 
 
@@ -161,9 +204,11 @@ def report(source: Path, output: Path) -> Path:
         "P99 with small n is exploratory. No saturation or cross-hardware conclusion "
         "follows from smoke runs.",
         "",
-        "| Scenario | Fault | Idempotent | Attempts/retries | Rejections | n | Drops | "
+        "| Scenario | Isolation | CPU iterations | Memory bytes | Fault | "
+        "Attempts/retries | Rejections | n | "
+        "Drops | "
         "Errors/timeouts | P50 ms | P95 ms | P99 ms |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for r in rows:
 
@@ -172,7 +217,8 @@ def report(source: Path, output: Path) -> Path:
             return f"{value:.3f}" if isinstance(value, (float, int)) else "N/A"
 
         lines.append(
-            f"| {r['scenario']} | {r['fault_mode']} | {r['idempotency']} | "
+            f"| {r['scenario']} | {r['isolation_label'] or 'native'} | "
+            f"{r['cpu_iterations']} | {r['memory_bytes']} | {r['fault_mode']} | "
             f"{r['attempts']}/{r['retries']} | {r['rejections']} | {r['n_success']} | "
             f"{r['dropped']} | "
             f"{r['errors']}/{r['timeouts']} | {fmt('p50_ms')} | {fmt('p95_ms')} | {fmt('p99_ms')} |"
@@ -193,6 +239,12 @@ def report(source: Path, output: Path) -> Path:
         "replacement or agent-delegation ranking.",
         "Retry, idempotency and backpressure rows are controlled application-layer "
         "treatments; they do not model every host or network failure.",
+        "Isolation labels describe requested treatments; cgroup limit/counter columns in "
+        "summary.csv are the observed evidence.",
+        "CPU iterations are fixed synthetic SHA-256 work, not model inference or a "
+        "duration-calibrated CPU benchmark.",
+        "Memory bytes are fixed touched allocations retained through the configured wait, not "
+        "a model-memory profile.",
         "Local deployment has fewer processes; the experiment does not prove a "
         "universal topology winner.",
         "",
@@ -300,13 +352,31 @@ def plot(rows: list[dict[str, str | int | float | None]], path: Path) -> None:
 
     valid = [r for r in rows if r["p50_ms"] is not None]
     figure, axis = plt.subplots(figsize=(max(10, len(valid) * 0.4), 6.5))
-    labels = [
-        f"{r['scenario']} / {int(str(r['payload_bytes'])) // 1024}KiB / {r['wait_ms']}ms / "
-        f"{r['mode']} / ctx={r['context_copies']} / tools={r['tool_repetitions']} / "
-        f"res={r['resource_reads_per_specialist']} / otel={r['telemetry']} / r{r['repetition']}"
-        f" / fault={r['fault_mode']} / idem={r['idempotency']}"
-        for r in valid
-    ]
+
+    def label(row: dict[str, str | int | float | None]) -> str:
+        memory_mib = int(str(row["memory_bytes"])) // (1024 * 1024)
+        isolation = str(row["isolation_label"] or "native")[:18]
+        parts = [
+            str(row["scenario"]),
+            f"{int(str(row['payload_bytes'])) // 1024}KiB",
+            f"w{row['wait_ms']}",
+            f"c{row['cpu_iterations']}",
+            f"m{memory_mib}MiB",
+            str(row["mode"]),
+            f"iso={isolation}",
+            f"otel={row['telemetry']}",
+            f"r{row['repetition']}",
+        ]
+        if str(row["scenario"]).startswith("mcp-"):
+            parts.append(
+                f"amp={row['context_copies']}/{row['tool_repetitions']}/"
+                f"{row['resource_reads_per_specialist']}"
+            )
+        if row["fault_mode"] != "none" or row["idempotency"] == "true":
+            parts.append(f"fault={row['fault_mode']}/idem={row['idempotency']}")
+        return " / ".join(parts)
+
+    labels = [label(row) for row in valid]
     axis.plot(range(len(valid)), [float(str(r["p50_ms"])) for r in valid], "o", label="P50")
     axis.plot(range(len(valid)), [float(str(r["p95_ms"])) for r in valid], "x", label="P95")
     axis.set_xticks(range(len(valid)), labels, rotation=75, ha="right", fontsize=7)

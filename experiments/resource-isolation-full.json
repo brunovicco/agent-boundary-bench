@@ -1,0 +1,21 @@
+{
+  "label": "resource-isolation-full",
+  "seed": 42,
+  "repetitions": 5,
+  "defaults": {
+    "payload_bytes": 1024,
+    "wait_ms": 50,
+    "parallel": true,
+    "telemetry": false,
+    "duration": 30,
+    "warmup": 5,
+    "concurrency": 64,
+    "timeout": 10
+  },
+  "matrix": {
+    "scenario": ["local", "http", "a2a"],
+    "cpu_iterations": [0, 25000, 50000],
+    "memory_bytes": [0, 8388608],
+    "rate": [2, 5]
+  }
+}

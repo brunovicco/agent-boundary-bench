@@ -6,9 +6,11 @@ from pathlib import Path
 import pytest
 
 from agent_boundary_bench.adapters.local import LocalDelegate
+from agent_boundary_bench.adapters.remote import RemoteDelegate
 from agent_boundary_bench.application.supervisor import Invocation, NullProbe, supervise
-from agent_boundary_bench.benchmark.models import Config, Manifest
+from agent_boundary_bench.benchmark.models import Config, Manifest, ResourceSample
 from agent_boundary_bench.benchmark.runner import arrivals, has_timeout, one, run
+from agent_boundary_bench.benchmark.runtime import runtime
 from agent_boundary_bench.domain.credit import AnalysisTask, evaluate, fixture
 from agent_boundary_bench.entrypoints.cli import campaign_configs, validate
 from agent_boundary_bench.reporting.report import percentile, report, summarize
@@ -60,7 +62,11 @@ async def test_timeout_and_error_observations() -> None:
         await supervise(Broken(), fixture(1024), 0, True, 1, NullProbe())
 
 
-async def test_raw_manifest_and_report(tmp_path: Path) -> None:
+async def test_raw_manifest_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Native manifest assertions must not depend on Docker evidence variables
+    # exported by a developer's interactive shell.
+    monkeypatch.delenv("ABB_IMAGE_DIGEST", raising=False)
+    monkeypatch.delenv("ABB_ISOLATION_LABEL", raising=False)
     directory = await run(Config(rate=5, duration=0.4, telemetry=True), tmp_path / "raw")
     manifest = Manifest.model_validate_json((directory / "manifest.json").read_text())
     assert manifest.offered == manifest.succeeded == 2
@@ -69,9 +75,14 @@ async def test_raw_manifest_and_report(tmp_path: Path) -> None:
     assert manifest.image_hashes["application"] is None
     assert manifest.warmup_succeeded == manifest.config.warmup
     assert manifest.warmup_failed == 0
+    assert manifest.schema_version == "4"
+    assert manifest.resource_sampling["interval_ms"] == 100
+    assert manifest.resource_sampling["request_timeout_seconds"] == 5.0
     summary = summarize(directory / "manifest.json")
     assert summary["n_success"] == 2
     assert summary["specialist_peak_rss_bytes"] is None
+    assert summary["cpu_iterations"] == 0
+    assert summary["memory_bytes"] == 0
     await run(Config(rate=5, duration=0.4, telemetry=False), tmp_path / "raw")
     output = report(tmp_path / "raw", tmp_path / "report")
     assert "real observations" in output.read_text()
@@ -86,6 +97,38 @@ async def test_raw_manifest_and_report(tmp_path: Path) -> None:
         summarize(directory / "manifest.json")
     with pytest.raises(ValueError, match="no completed"):
         report(tmp_path / "empty", tmp_path / "empty-report")
+
+
+async def test_external_worker_resource_series_and_topology(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service_directory = tmp_path / "service"
+    service_directory.mkdir()
+    config = Config(scenario="http", rate=2, duration=0.5, warmup=1)
+    async with runtime(config, NullProbe(), service_directory) as (delegate, _):
+        assert isinstance(delegate, RemoteDelegate)
+        monkeypatch.setenv("ABB_HTTP_ENDPOINT", delegate.url)
+        monkeypatch.setenv("ABB_ISOLATION_LABEL", "integration-test")
+        directory = await run(config, tmp_path / "raw-external")
+
+    manifest = Manifest.model_validate_json((directory / "manifest.json").read_text())
+    assert manifest.network["topology"] == "explicit external service endpoint"
+    assert manifest.network["specialist_resource_endpoint"] == delegate.url
+    isolation = manifest.environment["resource_isolation"]
+    assert isinstance(isolation, dict)
+    assert isolation["label"] == "integration-test"
+    assert set(isolation) == {
+        "label",
+        "cgroup_version",
+        "cpu_limit_cores",
+        "memory_limit_bytes",
+    }
+    resources = [
+        ResourceSample.model_validate_json(line)
+        for line in (directory / "resources.jsonl").read_text().splitlines()
+    ]
+    assert {sample.role for sample in resources} == {"harness", "specialist"}
+    assert manifest.resource_sampling["failures"] == {"harness": 0, "specialist": 0}
 
 
 def test_statistics_campaign_and_fixtures(tmp_path: Path) -> None:
@@ -107,6 +150,8 @@ def test_statistics_campaign_and_fixtures(tmp_path: Path) -> None:
     assert len(campaign_configs(Path("experiments/timeout-full.json"))) == 120
     assert len(campaign_configs(Path("experiments/backpressure-smoke.json"))) == 18
     assert len(campaign_configs(Path("experiments/backpressure-full.json"))) == 270
+    assert len(campaign_configs(Path("experiments/resource-isolation-smoke.json"))) == 12
+    assert len(campaign_configs(Path("experiments/resource-isolation-full.json"))) == 180
     data = json.loads(Path("experiments/full.json").read_text())
     data["repetitions"] = 1
     path = tmp_path / "invalid.json"
@@ -115,6 +160,8 @@ def test_statistics_campaign_and_fixtures(tmp_path: Path) -> None:
         campaign_configs(path)
     with pytest.raises(ValueError, match="only for MCP"):
         Config(scenario="a2a", context_copies=1)
+    with pytest.raises(ValueError, match="concurrent memory"):
+        Config(parallel=True, memory_bytes=64 * 1024 * 1024, specialist_repetitions=2)
 
 
 async def test_bounded_generalized_fanout() -> None:

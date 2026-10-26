@@ -13,16 +13,18 @@ from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
+import httpx
 import psutil
 from opentelemetry import trace
 
 from agent_boundary_bench.application.resilience import AttemptMetrics, RetryFailure, add_metrics
 from agent_boundary_bench.application.supervisor import Delegate, NullProbe, Probe, supervise
 from agent_boundary_bench.benchmark.models import Config, Manifest, ResourceSample, Sample
-from agent_boundary_bench.benchmark.runtime import runtime
+from agent_boundary_bench.benchmark.runtime import ResourceTarget, runtime
 from agent_boundary_bench.domain.credit import CreditCase, digest, fixture
 from agent_boundary_bench.observability import Telemetry
 from agent_boundary_bench.observability.process import procfs_pid
+from agent_boundary_bench.observability.resources import runtime_resource_snapshot
 
 
 def file_hash(path: Path) -> str:
@@ -72,34 +74,70 @@ def environment() -> dict[str, object]:
     for name in ("cpu.max", "memory.max", "cpuset.cpus.effective"):
         path = Path("/sys/fs/cgroup") / name
         result[name] = path.read_text().strip() if path.exists() else None
+    snapshot = runtime_resource_snapshot()
+    result["resource_isolation"] = {
+        "label": os.getenv("ABB_ISOLATION_LABEL"),
+        "cgroup_version": snapshot.cgroup_version,
+        "cpu_limit_cores": snapshot.cpu_limit_cores,
+        "memory_limit_bytes": snapshot.memory_limit_bytes,
+    }
     return result
 
 
 def resource_snapshot(pid: int, role: str, elapsed_ms: float) -> ResourceSample:
-    """Measure process CPU and RSS; separate generator and specialist."""
-    process = psutil.Process(pid)
-    cpu = process.cpu_times()
+    """Measure process and cgroup counters; separate generator and specialist."""
+    snapshot = runtime_resource_snapshot(pid)
     return ResourceSample(
         elapsed_ms=elapsed_ms,
         role=role,
-        pid=pid,
-        cpu_seconds=cpu.user + cpu.system,
-        rss_bytes=process.memory_info().rss,
+        **snapshot.as_dict(),
     )
 
 
-async def monitor(pids: dict[str, int], samples: list[ResourceSample], stop: asyncio.Event) -> None:
-    """Sample every 100 ms, retaining first/last points for CPU deltas."""
+async def monitor(
+    targets: dict[str, ResourceTarget],
+    samples: list[ResourceSample],
+    stop: asyncio.Event,
+) -> dict[str, object]:
+    """Sample every 100 ms and disclose any unavailable observations."""
     started = perf_counter()
-    while True:
-        for role, pid in pids.items():
-            samples.append(resource_snapshot(pid, role, (perf_counter() - started) * 1000))
-        if stop.is_set():
-            return
-        try:
-            await asyncio.wait_for(stop.wait(), 0.1)
-        except TimeoutError:
-            continue
+    attempts = dict.fromkeys(targets, 0)
+    failures = dict.fromkeys(targets, 0)
+    request_timeout_seconds = 5.0
+    async with httpx.AsyncClient(
+        trust_env=False,
+        timeout=request_timeout_seconds,
+    ) as client:
+        while True:
+            for role, target in targets.items():
+                attempts[role] += 1
+                elapsed_ms = (perf_counter() - started) * 1000
+                try:
+                    if target.url is not None:
+                        response = await client.get(target.url + "/resources")
+                        response.raise_for_status()
+                        samples.append(
+                            ResourceSample.model_validate(
+                                {"elapsed_ms": elapsed_ms, "role": role, **response.json()}
+                            )
+                        )
+                    elif target.pid is not None:
+                        samples.append(resource_snapshot(target.pid, role, elapsed_ms))
+                    else:
+                        failures[role] += 1
+                except (httpx.HTTPError, OSError, TypeError, ValueError, psutil.Error):
+                    failures[role] += 1
+            if stop.is_set():
+                return {
+                    "interval_ms": 100,
+                    "request_timeout_seconds": request_timeout_seconds,
+                    "attempts": attempts,
+                    "failures": failures,
+                }
+            try:
+                await asyncio.wait_for(stop.wait(), 0.1)
+            except TimeoutError:
+                continue
 
 
 async def one(
@@ -129,6 +167,8 @@ async def one(
                 probe,
                 specialist_repetitions=config.specialist_repetitions,
                 fanout_limit=config.fanout_limit,
+                cpu_iterations=config.cpu_iterations,
+                memory_bytes=config.memory_bytes,
                 resilience=config.resilience_policy(),
                 execution_id=f"measured:{config.seed}:{config.repetition}:{index}",
             )
@@ -274,10 +314,11 @@ async def run(config: Config, output: Path) -> Path:
     probe: Probe = telemetry or NullProbe()
     case = fixture(config.payload_bytes, config.seed)
     resources: list[ResourceSample] = []
+    resource_sampling: dict[str, object] = {}
     warmup_succeeded = 0
     warmup_failed = 0
     try:
-        async with runtime(config, probe, directory) as (delegate, pid):
+        async with runtime(config, probe, directory) as (delegate, specialist_target):
             for _ in range(config.warmup):
                 try:
                     await supervise(
@@ -289,6 +330,8 @@ async def run(config: Config, output: Path) -> Path:
                         probe,
                         specialist_repetitions=config.specialist_repetitions,
                         fanout_limit=config.fanout_limit,
+                        cpu_iterations=config.cpu_iterations,
+                        memory_bytes=config.memory_bytes,
                         resilience=config.resilience_policy(),
                     )
                 except Exception as exc:
@@ -299,15 +342,15 @@ async def run(config: Config, output: Path) -> Path:
                 else:
                     warmup_succeeded += 1
             stop = asyncio.Event()
-            pids = {"harness": procfs_pid()}
-            if pid is not None:
-                pids["specialist"] = pid
-            monitoring = asyncio.create_task(monitor(pids, resources, stop))
+            targets = {"harness": ResourceTarget(pid=procfs_pid())}
+            if specialist_target is not None:
+                targets["specialist"] = specialist_target
+            monitoring = asyncio.create_task(monitor(targets, resources, stop))
             try:
                 samples, elapsed = await arrivals(config, delegate, case, probe)
             finally:
                 stop.set()
-                await monitoring
+                resource_sampling = await monitoring
     finally:
         if telemetry:
             telemetry.close()
@@ -341,11 +384,13 @@ async def run(config: Config, output: Path) -> Path:
             )
         },
         environment=environment(),
-        image_hashes={"application": os.getenv("ABB_IMAGE_DIGEST")},
+        image_hashes={"application": os.getenv("ABB_IMAGE_DIGEST") or None},
         network={
             "topology": (
                 "in-process"
                 if config.scenario in ("local", "mcp-inprocess")
+                else os.getenv("ABB_NETWORK_TOPOLOGY", "explicit external service endpoint")
+                if specialist_target is not None and specialist_target.external
                 else "same-host stdio child process"
                 if config.scenario == "mcp-stdio"
                 else "same-host loopback"
@@ -378,6 +423,11 @@ async def run(config: Config, output: Path) -> Path:
                 else "none"
             ),
             "load_generator": "python monotonic fixed-arrival deadlines",
+            "specialist_resource_endpoint": (
+                specialist_target.url
+                if specialist_target is not None and specialist_target.external
+                else None
+            ),
         },
         fixture_sha256=digest(case),
         warmup_succeeded=warmup_succeeded,
@@ -390,9 +440,20 @@ async def run(config: Config, output: Path) -> Path:
         arrival_window_seconds=config.duration,
         sample_sha256=file_hash(sample_file),
         resource_sha256=file_hash(resource_file),
+        resource_sampling=resource_sampling,
         limitations=[
             "Synthetic asynchronous wait is not CPU work or model inference.",
+            "Synthetic CPU iterations and touched memory allocation are fixed work controls, "
+            "not calibrated model workloads.",
             "Shared host; generator competes with system under test. No hardware isolation claim.",
+            "cgroup counters are observational and sampled at 100 ms; the resource endpoint "
+            "adds small control-plane work outside the business payload.",
+            "A configured isolation label is descriptive; observed cgroup CPU/memory limits in "
+            "the manifest and resources file are authoritative.",
+            "Component resource caps do not equalize aggregate architecture budgets; remote "
+            "topologies can use harness and specialist quotas while local work shares one quota.",
+            "cgroup memory.peak is container-lifetime state; sampled memory.current and RSS "
+            "provide round-scoped observations but can miss activity between samples.",
             "Body bytes exclude TCP/IP and HTTP headers. "
             "Serialization metric covers explicit domain codec only.",
             "A2A uses immediate Message replies; durable task lifecycle, polling and "

@@ -54,6 +54,8 @@ def create_gateway(config: Config, directory: Path) -> FastAPI:
             probe,
             specialist_repetitions=config.specialist_repetitions,
             fanout_limit=config.fanout_limit,
+            cpu_iterations=config.cpu_iterations,
+            memory_bytes=config.memory_bytes,
             resilience=config.resilience_policy(),
         )
         return {

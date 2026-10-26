@@ -12,7 +12,10 @@ from agent_boundary_bench.domain.credit import (
     canonical,
     digest,
     evaluate,
+    execute,
     fixture,
+    synthetic_cpu_work,
+    synthetic_memory_work,
 )
 
 
@@ -41,3 +44,27 @@ def test_rules_and_invalid_inputs() -> None:
         evaluate(AnalysisTask(Specialist.DOCUMENT, case, 1))
     with pytest.raises(ValueError, match="financial units"):
         evaluate(AnalysisTask(Specialist.FINANCIAL, replace(case, revenue_units=0)))
+    with pytest.raises(ValueError, match="cpu_iterations"):
+        evaluate(AnalysisTask(Specialist.DOCUMENT, case, cpu_iterations=-1))
+    with pytest.raises(ValueError, match="memory_bytes"):
+        evaluate(AnalysisTask(Specialist.DOCUMENT, case, memory_bytes=64 * 1024 * 1024 + 1))
+
+
+async def test_cpu_work_is_deterministic_and_business_neutral() -> None:
+    case = fixture(1024)
+    baseline = AnalysisTask(Specialist.DOCUMENT, case)
+    treated = AnalysisTask(
+        Specialist.DOCUMENT,
+        case,
+        cpu_iterations=100,
+        memory_bytes=8192,
+    )
+    assert synthetic_cpu_work(treated) == synthetic_cpu_work(treated)
+    assert synthetic_cpu_work(treated) != synthetic_cpu_work(
+        AnalysisTask(Specialist.FINANCIAL, case, cpu_iterations=100)
+    )
+    allocation = synthetic_memory_work(treated)
+    assert len(allocation) == 8192
+    assert allocation[0] == 0
+    assert allocation[4096] == 1
+    assert await execute(treated) == await execute(baseline)

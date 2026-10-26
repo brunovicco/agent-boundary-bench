@@ -17,13 +17,15 @@ MCP is modeled as a distinct tool-access family. One `MCPServer` publishes `anal
 
 One subprocess owns three remote specialist roles, matching HTTP and A2A process/worker counts and deployment location. MCP stdio and Streamable HTTP also use one tool-server process; MCP in-process deliberately does not. The application enforces one deadline; transport clients have explicit operation timeouts. Pools/sessions are reused per round. Discovery and startup precede warmup and use separate bounded readiness deadlines; measured tool/resource operations retain the configured round timeout. All owned service processes are closed in finally blocks; externally visible HTTP children use bounded graceful termination then kill only when unresponsive.
 
-The benchmark package owns open arrivals, manifests and resource sampling. Observability owns explicit providers and propagation. Reporting verifies data before deriving statistics. CLI/gateway entrypoints compose the pieces. The gateway is a uniform optional ingress for k6 and does not alter native harness latency.
+The benchmark package owns open arrivals, manifests and resource sampling. Observability owns explicit providers, propagation and nullable process/cgroup v2 observations. Reporting verifies data before deriving statistics. CLI/gateway entrypoints compose the pieces. The gateway is a uniform optional ingress for k6 and does not alter native harness latency.
 
-Fault and pressure controls currently apply only to A0/A1/A2. This preserves the distinction
-between agent delegation and MCP tool access. Process/container isolation and cross-host network
-treatments are separate pending v0.3 milestones rather than implicit claims of the application
+Fault, pressure and resource-isolation controls currently apply to the A0/A1/A2 research family.
+This preserves the distinction between agent delegation and MCP tool access. The isolation
+Compose overlay runs the harness in one cgroup and HTTP/A2A workers in equal separate cgroups;
+local delegation deliberately shares the harness cgroup. Cross-host network and process-crash
+treatments remain separate pending milestones rather than implicit claims of the application
 fault injector.
 
 The inherited architecture gate checks domain/application dependency direction. Tests exercise real A2A and MCP SDK client/server exchanges across sockets, pipes and direct dispatch rather than protocol mocks. They do not constitute certification against complete upstream TCKs.
 
-See ADRs 0001–0007 and methodology for trade-offs and inference limits.
+See ADRs 0001–0008 and methodology for trade-offs and inference limits.

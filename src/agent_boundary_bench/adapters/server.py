@@ -26,6 +26,7 @@ from agent_boundary_bench.application.supervisor import NullProbe, Probe
 from agent_boundary_bench.domain.credit import AnalysisTask, Specialist
 from agent_boundary_bench.observability import Telemetry, TraceMiddleware
 from agent_boundary_bench.observability.process import procfs_pid
+from agent_boundary_bench.observability.resources import runtime_resource_snapshot
 
 
 async def process(
@@ -103,6 +104,11 @@ def create_app(
             "version": __version__,
             "procfs_pid": str(procfs_pid()),
         }
+
+    @app.get("/resources")
+    async def resources() -> dict[str, int | float | str | None]:
+        """Expose metadata-only process/cgroup counters to the isolated harness."""
+        return runtime_resource_snapshot().as_dict()
 
     if scenario == "http":
 

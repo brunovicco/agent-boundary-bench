@@ -26,6 +26,13 @@
       "title": "Context Copies",
       "type": "integer"
     },
+    "cpu_iterations": {
+      "default": 0,
+      "maximum": 1000000,
+      "minimum": 0,
+      "title": "Cpu Iterations",
+      "type": "integer"
+    },
     "duration": {
       "default": 2,
       "exclusiveMinimum": 0,
@@ -94,6 +101,13 @@
       "maximum": 8,
       "minimum": 1,
       "title": "Max Attempts",
+      "type": "integer"
+    },
+    "memory_bytes": {
+      "default": 0,
+      "maximum": 67108864,
+      "minimum": 0,
+      "title": "Memory Bytes",
       "type": "integer"
     },
     "parallel": {

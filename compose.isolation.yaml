@@ -1,0 +1,35 @@
+services:
+  http:
+    cpus: ${ABB_SPECIALIST_CPUS:-1.0}
+    mem_limit: ${ABB_SPECIALIST_MEMORY:-512m}
+  a2a:
+    cpus: ${ABB_SPECIALIST_CPUS:-1.0}
+    mem_limit: ${ABB_SPECIALIST_MEMORY:-512m}
+  isolation-runner:
+    build: .
+    image: agent-boundary-bench:0.3.0-dev0
+    init: true
+    profiles: ["isolation"]
+    user: "${ABB_HOST_UID:-10001}:${ABB_HOST_GID:-10001}"
+    command:
+      - abb
+      - campaign
+      - --config
+      - experiments/resource-isolation-smoke.json
+      - --output
+      - /results/${ABB_ISOLATION_OUTPUT:-resource-isolation/smoke}
+    environment:
+      ABB_A2A_ENDPOINT: http://a2a:8100
+      ABB_HTTP_ENDPOINT: http://http:8100
+      ABB_IMAGE_DIGEST: ${ABB_IMAGE_DIGEST:-}
+      ABB_ISOLATION_LABEL: ${ABB_ISOLATION_LABEL:-generous}
+      ABB_NETWORK_TOPOLOGY: same-Compose-network independent container
+    cpus: ${ABB_HARNESS_CPUS:-1.0}
+    mem_limit: ${ABB_HARNESS_MEMORY:-512m}
+    volumes:
+      - ./results:/results
+    healthcheck:
+      disable: true
+    depends_on:
+      http: {condition: service_healthy}
+      a2a: {condition: service_healthy}

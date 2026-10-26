@@ -12,7 +12,7 @@ All payload targets refer to sorted compact ASCII domain case JSON, not complete
 
 ## Workload and order
 
-The minimum workload performs integer rules and hashes the case. 50/250 ms variants perform the same rules then await `asyncio.sleep`. Scheduler pressure can make actual elapsed waits longer. These are controlled requested waits, not calibrated CPU budgets. Larger cases require additional real hashing/serialization work, which is part of the observed payload-size effect.
+The minimum workload performs integer rules and hashes the case. 50/250 ms variants perform the same rules then await `asyncio.sleep`. Scheduler pressure can make actual elapsed waits longer. These are controlled requested waits, not calibrated CPU budgets. Larger cases require additional real hashing/serialization work, which is part of the observed payload-size effect. The v0.3 `cpu_iterations` factor performs a fixed SHA-256 chain per specialist call. `memory_bytes` allocates and touches a fixed byte array retained through the requested wait. They are deterministic synthetic resource work, not duration-calibrated work or model inference, and they do not change the business result.
 
 Sequential and concurrent orchestration use the same ordered task list. v0.2 supports 1–32 repetitions of all three roles and a 1–128 bounded parallel fan-out limit. Concurrent orchestration uses TaskGroup cancellation on error and a semaphore around adapter invocations. A single supervisor deadline covers fan-out and fan-in. Released v0.2 records have no retry or idempotency treatment; those controls first appear in schema v3 development runs.
 
@@ -59,8 +59,29 @@ k6 supplies an independent `constant-arrival-rate` path through a common supervi
   admission rejections and wait time are direct counters. Partial failed-attempt measurements are
   retained when the adapter observed them. Equality of final business output does not imply
   exactly-once execution.
-- CPU: process user+system seconds sampled at approximately 100 ms. Separate harness and worker deltas; divide by elapsed seconds to obtain average consumed cores if needed. Not normalized to host CPU count.
-- Memory: sampled process RSS, not allocator usage or exact instantaneous peak. Monitoring itself has overhead and runs in both baseline modes.
+- CPU: process user+system seconds plus optional cgroup v2 cumulative usage/throttling counters,
+  sampled at approximately 100 ms. Separate harness and worker process deltas. Cgroup counters
+  apply to the whole cgroup and must not be added when two roles share it. Divide process or
+  cgroup CPU seconds by elapsed seconds to obtain average consumed cores if needed.
+- Memory: sampled process RSS plus optional cgroup v2 current/peak/limit and event counters.
+  RSS is not allocator usage or an exact instantaneous peak; cgroup memory is not process-only.
+  Monitoring itself has overhead and runs in every compared mode.
+
+The container campaign keeps `wait_ms=50` in every arm so the optional touched allocation remains
+live during an equivalent async wait. The cgroup `memory.peak` field is lifetime state for the
+persistent campaign container and can carry an earlier round's peak; sampled memory-current and
+process-RSS maxima are round-scoped but can miss activity between samples.
+
+For the resource-isolation treatment, the Compose overlay places the harness in one container
+cgroup and each remote service in its own equally configured cgroup. A0 remains inside the
+harness process/cgroup. Requested labels and Compose variables are descriptive; the observed
+cgroup version, quota, limit and counters in raw data determine whether enforcement evidence is
+available. Remote sampling calls `/resources` outside the business protocol approximately every
+100 ms and the manifest records sampling attempts/failures.
+
+The default profiles hold the harness quota constant and vary the remote specialist quota. Remote
+architectures therefore have a separate additional quota while local work shares the harness
+quota. This measures component isolation under declared caps, not equal aggregate compute budgets.
 
 The official high-level stdio client owns its subprocess without exposing its PID through the public API. v0.2 therefore records harness resources but leaves stdio specialist CPU/RSS unavailable instead of discovering it through SDK internals or process-name heuristics.
 
@@ -76,11 +97,10 @@ Off uses NullProbe and performs no explicit OTel calls at benchmark boundaries. 
 
 Reject missing/tampered raw files, bad schemas, non-contiguous sample indices and manifest count mismatches. An aborted round lacks a completed manifest. Keep its logs for diagnosis; do not manufacture a result. Success requires real adapter contract equality, official A2A and MCP protocol tests, error/timeout tests, strict typing, lint and architecture checks. CI is a functional test environment; its timings are never promoted as comparable measurements.
 
-Same-host synthetic waits do not establish cross-region cost, CPU parallelism, fault isolation, tenant/security isolation, availability, model behavior or independent scaling. Record OS, architecture, hardware/cgroup constraints, dependency lock, commit and dirty state. Native rounds use no application image and record its digest as null. Container campaigns must capture their actual built images and topology; the provided Compose smoke alone is not a performance campaign.
+Same-host synthetic waits do not establish cross-region cost, CPU parallelism, fault isolation, tenant/security isolation, availability, model behavior or independent scaling. Record OS, architecture, hardware/cgroup constraints, dependency lock, commit and dirty state. Native rounds use no application image and record its digest as null. Container campaigns must capture their actual built images and topology. The resource-isolation smoke validates wiring only; capacity claims require the full repeated profiles and reviewed raw evidence.
 
 The v0.3 application fault injector does not change this limitation. Infrastructure fault,
-resource-isolation and cross-host campaigns require separately recorded topology and enforcement
-evidence. Do not label an injected application failure as a process crash, packet loss or regional
-outage.
+cross-host campaigns require separately recorded topology and enforcement evidence. Do not label
+an injected application failure as a process crash, packet loss or regional outage.
 
-References consulted 2026-10-25: [k6 open arrivals](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/), [Azure chatty I/O](https://learn.microsoft.com/en-us/azure/architecture/antipatterns/chatty-io/), [Azure design principles](https://learn.microsoft.com/en-us/azure/architecture/guide/design-principles/).
+References consulted 2026-10-25: [k6 open arrivals](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/), [Azure chatty I/O](https://learn.microsoft.com/en-us/azure/architecture/antipatterns/chatty-io/), [Azure design principles](https://learn.microsoft.com/en-us/azure/architecture/guide/design-principles/). Resource-isolation references consulted 2026-10-26: [Compose services](https://docs.docker.com/reference/compose-file/services/), [Compose deploy resources](https://docs.docker.com/reference/compose-file/deploy/) and [Linux cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html).

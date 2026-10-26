@@ -1,0 +1,21 @@
+{
+  "label": "resource-isolation-smoke",
+  "seed": 42,
+  "repetitions": 1,
+  "defaults": {
+    "payload_bytes": 1024,
+    "wait_ms": 50,
+    "parallel": true,
+    "telemetry": false,
+    "rate": 5,
+    "duration": 1,
+    "warmup": 1,
+    "concurrency": 32,
+    "timeout": 5
+  },
+  "matrix": {
+    "scenario": ["local", "http", "a2a"],
+    "cpu_iterations": [0, 25000],
+    "memory_bytes": [0, 8388608]
+  }
+}

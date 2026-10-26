@@ -10,7 +10,7 @@ from agent_boundary_bench.adapters.mcp import MCP_PROTOCOL_VERSION, MCPDelegate,
 from agent_boundary_bench.adapters.remote import RemoteDelegate
 from agent_boundary_bench.application.supervisor import NullProbe, supervise
 from agent_boundary_bench.benchmark.models import Config
-from agent_boundary_bench.benchmark.runtime import runtime
+from agent_boundary_bench.benchmark.runtime import external_endpoint, runtime
 from agent_boundary_bench.domain.credit import AnalysisTask, Specialist, evaluate, fixture
 from agent_boundary_bench.observability import Telemetry
 
@@ -27,8 +27,15 @@ def test_mcp_server_fixes_non_measured_logging_level() -> None:
 )
 async def test_real_adapter_equivalence(scenario: str, tmp_path: Path) -> None:
     config = Config.model_validate({"scenario": scenario})
-    async with runtime(config, NullProbe(), tmp_path) as (delegate, pid):
-        assert (pid is not None) == (scenario in ("http", "a2a", "mcp-streamable-http"))
+    async with runtime(config, NullProbe(), tmp_path) as (delegate, target):
+        assert (target is not None) == (scenario in ("http", "a2a", "mcp-streamable-http"))
+        if target is not None:
+            assert target.pid is not None
+            if scenario in ("http", "a2a"):
+                assert isinstance(delegate, RemoteDelegate)
+                resource_response = await delegate.http.get(delegate.url + "/resources")
+                resource_response.raise_for_status()
+                assert resource_response.json()["pid"] == target.pid
         for size in (1024, 16384, 131072):
             for wait in (0, 50, 250):
                 for specialist in Specialist:
@@ -49,6 +56,14 @@ async def test_real_adapter_equivalence(scenario: str, tmp_path: Path) -> None:
             await supervise(delegate, fixture(1024), 250, False, 0.01, NullProbe())
         recovered = await delegate.invoke(AnalysisTask(Specialist.DOCUMENT, fixture(1024)))
         assert recovered.result == evaluate(AnalysisTask(Specialist.DOCUMENT, fixture(1024)))
+        resource_treated = AnalysisTask(
+            Specialist.DOCUMENT,
+            fixture(1024),
+            wait_ms=50,
+            cpu_iterations=100,
+            memory_bytes=8192,
+        )
+        assert (await delegate.invoke(resource_treated)).result == evaluate(resource_treated)
 
 
 @pytest.mark.integration
@@ -151,3 +166,13 @@ async def test_invalid_input_and_trace_propagation(scenario: str, tmp_path: Path
     assert not any("synthetic-42" in json.dumps(s) for s in client_spans + server_spans)
     # Ensure none of the business JSON is exported in spans.
     assert not any(asdict(fixture(1024))["padding"] in json.dumps(s) for s in server_spans)
+
+
+def test_external_endpoint_requires_a_plain_http_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ABB_HTTP_ENDPOINT", "http://http:8100/")
+    assert external_endpoint(Config(scenario="http")) == "http://http:8100"
+    monkeypatch.setenv("ABB_HTTP_ENDPOINT", "http://user:secret@http:8100/path?query=1")
+    with pytest.raises(ValueError, match="credential-free HTTP origin"):
+        external_endpoint(Config(scenario="http"))
+    monkeypatch.delenv("ABB_HTTP_ENDPOINT")
+    assert external_endpoint(Config(scenario="http")) is None
