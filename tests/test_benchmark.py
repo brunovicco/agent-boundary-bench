@@ -78,6 +78,8 @@ async def test_raw_manifest_and_report(tmp_path: Path) -> None:
     assert (output.parent / "latency.png").stat().st_size > 1000
     assert len((output.parent / "telemetry-deltas.csv").read_text().splitlines()) == 2
     assert len((output.parent / "span-summary.csv").read_text().splitlines()) > 1
+    for csv_name in ("summary.csv", "telemetry-deltas.csv", "span-summary.csv"):
+        assert b"\r\n" not in (output.parent / csv_name).read_bytes()
     # Reports must reject missing/tampered samples rather than fill them in.
     (directory / "samples.jsonl").write_text("")
     with pytest.raises(ValueError, match="hash mismatch"):

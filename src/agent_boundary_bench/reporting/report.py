@@ -146,7 +146,7 @@ def report(source: Path, output: Path) -> Path:
     rows = [summarize(path) for path in manifests]
     output.mkdir(parents=True, exist_ok=True)
     with (output / "summary.csv").open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     telemetry_effects(manifests, rows, output / "telemetry-deltas.csv")
@@ -232,8 +232,8 @@ def telemetry_effects(
         group = groups.setdefault(key, {})
         group.setdefault(manifest.config.telemetry, []).append(row)
     fields = ["off_run_id", "on_run_id", "scenario", "mean_delta_ms", "p95_delta_ms"]
-    with path.open("w", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=fields)
+    with path.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         for group in groups.values():
             if False not in group or True not in group:
@@ -256,9 +256,11 @@ def telemetry_effects(
 
 def span_statistics(manifests: list[Path], path: Path) -> None:
     """Summarize existing measured-trace spans only; warmup stays excluded."""
-    with path.open("w", newline="") as stream:
+    with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(
-            stream, fieldnames=["run_id", "service", "span", "n", "mean_ms", "p95_ms"]
+            stream,
+            fieldnames=["run_id", "service", "span", "n", "mean_ms", "p95_ms"],
+            lineterminator="\n",
         )
         writer.writeheader()
         for manifest_path in manifests:
