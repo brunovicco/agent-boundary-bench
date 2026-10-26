@@ -1,7 +1,7 @@
 name: agent-boundary-bench
 x-app: &app
   build: .
-  image: agent-boundary-bench:0.2.0
+  image: agent-boundary-bench:0.3.0-dev0
   init: true
   cpus: 1
   mem_limit: 512m

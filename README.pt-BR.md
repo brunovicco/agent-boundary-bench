@@ -7,9 +7,13 @@
 
 Laboratório reproduzível para investigar o custo de cruzar fronteiras de processo e protocolo. A família de delegação compara Python em processo, HTTP convencional e A2A 1.0 JSON-RPC. A família de acesso a ferramentas compara MCP v2 em processo, stdio e Streamable HTTP. Todas executam o mesmo kernel determinístico de crédito corporativo sintético.
 
-[README completo em inglês](README.md) · [Notas da v0.2.0](docs/RELEASE_0.2.0.md) · [Metodologia](docs/METHODOLOGY.md) · [Compatibilidade](docs/COMPATIBILITY.md) · [Validação realizada](VALIDATION.md)
+[README completo em inglês](README.md) · [Notas da v0.2.0](docs/RELEASE_0.2.0.md) · [Desenvolvimento v0.3](docs/RESILIENCE.md) · [Metodologia](docs/METHODOLOGY.md) · [Compatibilidade](docs/COMPATIBILITY.md) · [Validação realizada](VALIDATION.md)
 
 Não usa LLM, dados financeiros reais, chaves comerciais ou banco de dados. A versão atual, v0.2.0, inclui tools/resources MCP, fan-out/fan-in limitado e amplificação controlada de contexto e chamadas. Os papéis de especialistas continuam sintéticos; o laboratório não mede automaticamente autonomia de agentes nem benefícios de isolamento sob falha.
+
+A branch `feat/v0.3.0` está em desenvolvimento como `0.3.0.dev0`. O primeiro recorte inclui
+falhas controladas na delegação, retries limitados, IDs idempotentes e backpressure no serviço.
+Isso ainda não representa uma release v0.3 nem evidência de capacidade sustentada.
 
 | Cenário | Fronteira | Especialista remoto |
 |---|---|---|
@@ -55,6 +59,12 @@ uv run abb campaign --config experiments/mcp-pilot.json --output results/mcp-pil
 uv run abb campaign --config experiments/mcp-full.json --output results/mcp-full
 uv run abb campaign --config experiments/mcp-amplification-full.json \
   --output results/mcp-amplification
+uv run abb campaign --config experiments/resilience-smoke.json \
+  --output results/resilience-smoke
+uv run abb campaign --config experiments/timeout-smoke.json \
+  --output results/timeout-smoke
+uv run abb campaign --config experiments/backpressure-smoke.json \
+  --output results/backpressure-smoke
 ```
 
 As matrizes `full.json` e `mcp-full.json` contêm 1.620 rodadas cada; só as janelas de medição somam 13,5 horas por matriz. A campanha MCP de amplificação contém 1.440 rodadas e separa payload, cópias de contexto, repetições de tools/resources e fan-out da variação de taxa. Comece por `mcp-smoke.json` ou pelo piloto MCP de cinco repetições.
@@ -64,6 +74,18 @@ uv run abb run --scenario mcp-streamable-http --payload-bytes 16384 \
   --context-copies 4 --tool-repetitions 2 --resource-reads 2 \
   --specialist-repetitions 4 --parallel --fanout-limit 8
 ```
+
+Exemplo de recuperação controlada em desenvolvimento:
+
+```bash
+uv run abb run --scenario a2a --profile smoke \
+  --fault-mode after-commit --max-attempts 2 --attempt-timeout 1 \
+  --idempotency --output results/v030-a2a-after-commit
+```
+
+O schema v3 registra tentativas, retries, execuções do kernel, hits idempotentes, falhas
+injetadas, rejeições e tempo de espera por admissão. Consulte
+[RESILIENCE.md](docs/RESILIENCE.md) antes de interpretar esses campos.
 
 ## Docker e k6
 
@@ -96,6 +118,6 @@ O objetivo é subsidiar decisões entre monólito modular, serviços e topologia
 
 O piloto MCP real executou 120 rodadas e concluiu 1.200/1.200 requisições sem erros, timeouts ou descartes. Na condição sem telemetria, sem cópias de contexto e sem leituras de resources, a mediana dos P50 por rodada foi 3,110 ms para dispatch direto, 5,842 ms para stdio e 6,315 ms para Streamable HTTP (cinco rodadas, 50 amostras por fronteira). Duas leituras não cacheadas por especialista elevaram as medianas observadas nas três fronteiras. São resultados curtos em host compartilhado: validam o caminho experimental, mas não demonstram capacidade sustentada nem substituição entre MCP e A2A.
 
-Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md), as [notas da v0.2.0](docs/RELEASE_0.2.0.md) e as [regras de contribuição](CONTRIBUTING.md).
+Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md), as [notas da v0.2.0](docs/RELEASE_0.2.0.md), o [escopo v0.3 em desenvolvimento](docs/RESILIENCE.md) e as [regras de contribuição](CONTRIBUTING.md).
 
 O repositório público canônico é [brunovicco/agent-boundary-bench](https://github.com/brunovicco/agent-boundary-bench). Bundles locais são apenas artefatos de recuperação e não substituem o remote Git oficial.

@@ -44,7 +44,14 @@ async def test_timeout_and_error_observations() -> None:
     assert has_timeout(ExceptionGroup("group", [TimeoutError()]))
 
     class Broken:
-        async def invoke(self, task: AnalysisTask) -> Invocation:
+        async def invoke(
+            self,
+            task: AnalysisTask,
+            *,
+            delegation_id: str | None = None,
+            attempt: int = 1,
+        ) -> Invocation:
+            del delegation_id, attempt
             raise ValueError("bad data")
 
     sample = await one(0, now, now, Config(), Broken(), fixture(1024), NullProbe())
@@ -60,6 +67,8 @@ async def test_raw_manifest_and_report(tmp_path: Path) -> None:
     assert manifest.commit_sha is None or len(manifest.commit_sha) == 40
     assert manifest.packages["a2a-sdk"] == "1.2.3"
     assert manifest.image_hashes["application"] is None
+    assert manifest.warmup_succeeded == manifest.config.warmup
+    assert manifest.warmup_failed == 0
     summary = summarize(directory / "manifest.json")
     assert summary["n_success"] == 2
     assert summary["specialist_peak_rss_bytes"] is None
@@ -90,6 +99,12 @@ def test_statistics_campaign_and_fixtures(tmp_path: Path) -> None:
     assert len(campaign_configs(Path("experiments/mcp-pilot.json"))) == 120
     assert len(campaign_configs(Path("experiments/mcp-full.json"))) == 1620
     assert len(campaign_configs(Path("experiments/mcp-amplification-full.json"))) == 1440
+    assert len(campaign_configs(Path("experiments/resilience-smoke.json"))) == 24
+    assert len(campaign_configs(Path("experiments/resilience-full.json"))) == 1920
+    assert len(campaign_configs(Path("experiments/timeout-smoke.json"))) == 3
+    assert len(campaign_configs(Path("experiments/timeout-full.json"))) == 120
+    assert len(campaign_configs(Path("experiments/backpressure-smoke.json"))) == 18
+    assert len(campaign_configs(Path("experiments/backpressure-full.json"))) == 270
     data = json.loads(Path("experiments/full.json").read_text())
     data["repetitions"] = 1
     path = tmp_path / "invalid.json"
@@ -106,9 +121,16 @@ async def test_bounded_generalized_fanout() -> None:
             self.active = 0
             self.peak = 0
 
-        async def invoke(self, task: AnalysisTask) -> Invocation:
+        async def invoke(
+            self,
+            task: AnalysisTask,
+            *,
+            delegation_id: str | None = None,
+            attempt: int = 1,
+        ) -> Invocation:
             import asyncio
 
+            del delegation_id, attempt
             self.active += 1
             self.peak = max(self.peak, self.active)
             try:

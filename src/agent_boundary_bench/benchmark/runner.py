@@ -16,6 +16,7 @@ from uuid import uuid4
 import psutil
 from opentelemetry import trace
 
+from agent_boundary_bench.application.resilience import AttemptMetrics, RetryFailure, add_metrics
 from agent_boundary_bench.application.supervisor import Delegate, NullProbe, Probe, supervise
 from agent_boundary_bench.benchmark.models import Config, Manifest, ResourceSample, Sample
 from agent_boundary_bench.benchmark.runtime import runtime
@@ -128,6 +129,8 @@ async def one(
                 probe,
                 specialist_repetitions=config.specialist_repetitions,
                 fanout_limit=config.fanout_limit,
+                resilience=config.resilience_policy(),
+                execution_id=f"measured:{config.seed}:{config.repetition}:{index}",
             )
             measured = {
                 "specialist_ms": [v.specialist_ms for v in result.invocations],
@@ -139,10 +142,43 @@ async def one(
                 "tool_calls": sum(v.tool_calls for v in result.invocations),
                 "resource_reads": sum(v.resource_reads for v in result.invocations),
                 "context_bytes": sum(v.context_bytes for v in result.invocations),
+                "attempts": sum(v.attempts for v in result.invocations),
+                "retries": sum(v.retries for v in result.invocations),
+                "kernel_executions": sum(v.kernel_executions for v in result.invocations),
+                "idempotency_hits": sum(v.idempotency_hits for v in result.invocations),
+                "injected_failures": sum(v.injected_failures for v in result.invocations),
+                "rejections": sum(v.rejections for v in result.invocations),
+                "backpressure_wait_ms": sum(v.backpressure_wait_ms for v in result.invocations),
             }
         except Exception as exc:  # measurement records failures rather than losing arrivals
             status = "timeout" if has_timeout(exc) else "error"
-            error = type(exc).__name__
+            failures = retry_failures(exc)
+            if failures:
+                cumulative = AttemptMetrics()
+                for failure in failures:
+                    cumulative = add_metrics(cumulative, failure.metrics)
+                measured = {
+                    "specialist_ms": [
+                        failure.metrics.specialist_ms
+                        for failure in failures
+                        if failure.metrics.specialist_ms > 0
+                    ],
+                    "remote_calls": cumulative.remote_calls,
+                    "request_bytes": cumulative.request_bytes,
+                    "response_bytes": cumulative.response_bytes,
+                    "serialization_ms": cumulative.serialization_ms,
+                    "transport_ms": cumulative.transport_ms,
+                    "attempts": sum(failure.attempts for failure in failures),
+                    "retries": sum(failure.attempts - 1 for failure in failures),
+                    "kernel_executions": cumulative.kernel_executions,
+                    "idempotency_hits": cumulative.idempotency_hits,
+                    "injected_failures": cumulative.injected_failures,
+                    "rejections": cumulative.rejections,
+                    "backpressure_wait_ms": cumulative.backpressure_wait_ms,
+                }
+                error = ",".join(sorted({failure.reason for failure in failures}))
+            else:
+                error = type(exc).__name__
     ended = perf_counter()
     return Sample.model_validate(
         {
@@ -165,6 +201,28 @@ def has_timeout(exc: BaseException) -> bool:
     if isinstance(exc, BaseExceptionGroup):
         return any(has_timeout(item) for item in exc.exceptions)
     return isinstance(exc, TimeoutError) or "Timeout" in type(exc).__name__
+
+
+def retry_failures(exc: BaseException) -> list[RetryFailure]:
+    """Collect typed retry failures through structured-concurrency exception groups."""
+    if isinstance(exc, BaseExceptionGroup):
+        return [failure for item in exc.exceptions for failure in retry_failures(item)]
+    return [exc] if isinstance(exc, RetryFailure) else []
+
+
+def expected_warmup_failures(config: Config, failures: list[RetryFailure]) -> bool:
+    """Allow only failures explicitly introduced by the configured treatment."""
+    expected: set[str] = set()
+    match config.fault_mode:
+        case "fail-first":
+            expected.add("injected_fail_first")
+        case "delay-first":
+            expected.update(("attempt_timeout", "injected_delay_first"))
+        case "after-commit":
+            expected.add("injected_after_commit")
+    if config.service_concurrency:
+        expected.update(("overloaded", "queue_timeout"))
+    return bool(failures) and all(failure.reason in expected for failure in failures)
 
 
 async def arrivals(
@@ -216,19 +274,30 @@ async def run(config: Config, output: Path) -> Path:
     probe: Probe = telemetry or NullProbe()
     case = fixture(config.payload_bytes, config.seed)
     resources: list[ResourceSample] = []
+    warmup_succeeded = 0
+    warmup_failed = 0
     try:
         async with runtime(config, probe, directory) as (delegate, pid):
             for _ in range(config.warmup):
-                await supervise(
-                    delegate,
-                    case,
-                    config.wait_ms,
-                    config.parallel,
-                    config.timeout,
-                    probe,
-                    specialist_repetitions=config.specialist_repetitions,
-                    fanout_limit=config.fanout_limit,
-                )
+                try:
+                    await supervise(
+                        delegate,
+                        case,
+                        config.wait_ms,
+                        config.parallel,
+                        config.timeout,
+                        probe,
+                        specialist_repetitions=config.specialist_repetitions,
+                        fanout_limit=config.fanout_limit,
+                        resilience=config.resilience_policy(),
+                    )
+                except Exception as exc:
+                    failures = retry_failures(exc)
+                    if not expected_warmup_failures(config, failures):
+                        raise
+                    warmup_failed += 1
+                else:
+                    warmup_succeeded += 1
             stop = asyncio.Event()
             pids = {"harness": procfs_pid()}
             if pid is not None:
@@ -311,6 +380,8 @@ async def run(config: Config, output: Path) -> Path:
             "load_generator": "python monotonic fixed-arrival deadlines",
         },
         fixture_sha256=digest(case),
+        warmup_succeeded=warmup_succeeded,
+        warmup_failed=warmup_failed,
         offered=len(samples),
         completed=sum(s.status != "dropped" for s in samples),
         succeeded=sum(s.status == "ok" for s in samples),
@@ -324,8 +395,8 @@ async def run(config: Config, output: Path) -> Path:
             "Shared host; generator competes with system under test. No hardware isolation claim.",
             "Body bytes exclude TCP/IP and HTTP headers. "
             "Serialization metric covers explicit domain codec only.",
-            "A2A uses immediate Message replies; "
-            "task lifecycle, retries and discovery cost are excluded.",
+            "A2A uses immediate Message replies; durable task lifecycle, polling and "
+            "discovery cost are excluded. Explicitly configured application retries are included.",
             "OTel enabled includes synchronous local JSONL export; "
             "not a universal instrumentation overhead.",
             "No image digest for native subprocess runs; null means not used/not measured.",
@@ -333,6 +404,10 @@ async def run(config: Config, output: Path) -> Path:
             "resource URI/content bytes; JSON-RPC/HTTP framing and headers are excluded.",
             "The MCP stdio SDK does not expose its child PID through the public client API; "
             "specialist CPU/RSS are therefore unavailable for that arm.",
+            "v0.3 fault injection is deterministic application-layer treatment, not a proxy "
+            "for every network, host or process failure mode.",
+            "Idempotency state is bounded, in-memory and worker-local; it is not a durable "
+            "cross-worker guarantee.",
         ],
     )
     (directory / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n")

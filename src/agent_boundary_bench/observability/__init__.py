@@ -19,6 +19,8 @@ from opentelemetry.trace import SpanKind
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from agent_boundary_bench import __version__
+
 
 class JsonExporter(SpanExporter):
     """Write bounded metadata-only JSONL spans synchronously for measurable export cost."""
@@ -63,7 +65,7 @@ class Telemetry:
             resource=Resource.create({"service.name": service}), sampler=ALWAYS_ON
         )
         self.provider.add_span_processor(SimpleSpanProcessor(JsonExporter(path)))
-        self.tracer = self.provider.get_tracer("agent-boundary-bench", "0.2.0")
+        self.tracer = self.provider.get_tracer("agent-boundary-bench", __version__)
 
     @contextmanager
     def span(self, name: str) -> Iterator[trace.Span]:

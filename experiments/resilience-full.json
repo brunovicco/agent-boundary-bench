@@ -1,0 +1,25 @@
+{
+  "label": "resilience-full",
+  "seed": 42,
+  "repetitions": 5,
+  "defaults": {
+    "rate": 20,
+    "duration": 30,
+    "warmup": 5,
+    "concurrency": 64,
+    "timeout": 5,
+    "max_attempts": 2,
+    "attempt_timeout": 1,
+    "retry_backoff_ms": 10,
+    "fault_delay_ms": 250
+  },
+  "matrix": {
+    "scenario": ["local", "http", "a2a"],
+    "payload_bytes": [1024, 16384],
+    "wait_ms": [0, 50],
+    "parallel": [false, true],
+    "telemetry": [false, true],
+    "fault_mode": ["none", "fail-first", "delay-first", "after-commit"],
+    "idempotency": [false, true]
+  }
+}

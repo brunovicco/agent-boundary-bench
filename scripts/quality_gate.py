@@ -65,6 +65,7 @@ def configured_checks(root: Path) -> list[Check]:
         Check("lint", ("ruff", "check", ".")),
         Check("format", ("ruff", "format", "--check", ".")),
         Check("architecture", (sys.executable, "scripts/validate_architecture.py")),
+        Check("schemas", (sys.executable, "scripts/generate_schemas.py")),
         Check("mcp", (sys.executable, "scripts/validate_mcp_config.py")),
         Check("governance", (sys.executable, "scripts/governance_gate.py")),
         Check(

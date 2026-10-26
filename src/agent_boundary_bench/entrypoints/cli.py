@@ -12,6 +12,7 @@ import uvicorn
 
 from agent_boundary_bench.adapters.mcp import create_mcp_server
 from agent_boundary_bench.adapters.server import create_app
+from agent_boundary_bench.application.resilience import ResiliencePolicy
 from agent_boundary_bench.benchmark.models import Config, Scenario
 from agent_boundary_bench.benchmark.runner import run
 from agent_boundary_bench.benchmark.runtime import health
@@ -48,6 +49,7 @@ def parser() -> argparse.ArgumentParser:
     server.add_argument("--port", type=int, default=8100)
     server.add_argument("--public-url", help="advertised A2A URL, defaults to bind URL")
     server.add_argument("--trace-file", type=Path)
+    _service_treatment_arguments(server)
     mcp_server = sub.add_parser("mcp-serve", help="official MCP v2 tool/resource server")
     mcp_server.add_argument("--transport", choices=["stdio", "streamable-http"], required=True)
     mcp_server.add_argument("--host", default="127.0.0.1")
@@ -60,6 +62,7 @@ def parser() -> argparse.ArgumentParser:
     gateway.add_argument("--wait-ms", type=int, default=0)
     gateway.add_argument("--parallel", action="store_true")
     gateway.add_argument("--telemetry", action="store_true")
+    gateway.add_argument("--timeout", type=float, default=5)
     _topology_arguments(gateway)
     gateway.add_argument("--output", type=Path, default=Path("results/gateway"))
     check = sub.add_parser("health")
@@ -75,6 +78,7 @@ def parser() -> argparse.ArgumentParser:
     bench.add_argument("--telemetry", action="store_true")
     bench.add_argument("--rate", type=int)
     bench.add_argument("--duration", type=float)
+    bench.add_argument("--warmup", type=int, default=3)
     bench.add_argument("--timeout", type=float, default=5)
     bench.add_argument("--concurrency", type=int, default=64)
     bench.add_argument("--seed", type=int, default=42)
@@ -90,12 +94,60 @@ def parser() -> argparse.ArgumentParser:
 
 
 def _topology_arguments(command: argparse.ArgumentParser) -> None:
-    """Add v0.2 fan-out and MCP amplification controls."""
+    """Add topology, amplification and v0.3 resilience controls."""
     command.add_argument("--specialist-repetitions", type=int, default=1)
     command.add_argument("--fanout-limit", type=int, default=64)
     command.add_argument("--context-copies", type=int, choices=[0, 1, 4, 16], default=0)
     command.add_argument("--tool-repetitions", type=int, default=1)
     command.add_argument("--resource-reads", type=int, default=0)
+    command.add_argument(
+        "--fault-mode",
+        choices=["none", "fail-first", "delay-first", "after-commit"],
+        default="none",
+    )
+    command.add_argument("--fault-every", type=int, default=1)
+    command.add_argument("--fault-delay-ms", type=int, default=100)
+    command.add_argument("--max-attempts", type=int, default=1)
+    command.add_argument("--attempt-timeout", type=float, default=5)
+    command.add_argument("--retry-backoff-ms", type=int, default=0)
+    command.add_argument("--idempotency", action="store_true")
+    command.add_argument("--idempotency-capacity", type=int, default=10000)
+    command.add_argument("--idempotency-ttl-seconds", type=float, default=300)
+    command.add_argument("--service-concurrency", type=int, default=0)
+    command.add_argument("--queue-capacity", type=int, default=0)
+    command.add_argument("--queue-timeout-ms", type=int, default=1000)
+
+
+def _service_treatment_arguments(command: argparse.ArgumentParser) -> None:
+    """Expose only specialist-side controls on standalone service commands."""
+    command.add_argument(
+        "--fault-mode",
+        choices=["none", "fail-first", "delay-first", "after-commit"],
+        default="none",
+    )
+    command.add_argument("--fault-every", type=int, default=1)
+    command.add_argument("--fault-delay-ms", type=int, default=100)
+    command.add_argument("--idempotency", action="store_true")
+    command.add_argument("--idempotency-capacity", type=int, default=10000)
+    command.add_argument("--idempotency-ttl-seconds", type=float, default=300)
+    command.add_argument("--service-concurrency", type=int, default=0)
+    command.add_argument("--queue-capacity", type=int, default=0)
+    command.add_argument("--queue-timeout-ms", type=int, default=1000)
+
+
+def _server_policy(args: argparse.Namespace) -> ResiliencePolicy:
+    """Build the process-local service policy from validated CLI primitives."""
+    return ResiliencePolicy(
+        fault_mode=args.fault_mode,
+        fault_every=args.fault_every,
+        fault_delay_ms=args.fault_delay_ms,
+        idempotency=args.idempotency,
+        idempotency_capacity=args.idempotency_capacity,
+        idempotency_ttl_seconds=args.idempotency_ttl_seconds,
+        service_concurrency=args.service_concurrency,
+        queue_capacity=args.queue_capacity,
+        queue_timeout_ms=args.queue_timeout_ms,
+    )
 
 
 def validate() -> None:
@@ -120,7 +172,7 @@ def campaign_configs(path: Path) -> list[Config]:
     """Expand a matrix, requiring five repeats for campaigns labelled full."""
     data = json.loads(path.read_text())
     repeats = int(data["repetitions"])
-    if data["label"] == "full" and repeats < 5:
+    if str(data["label"]).endswith("full") and repeats < 5:
         raise ValueError("full campaigns require at least five repetitions")
     rng = random.Random(int(data["seed"]))  # noqa: S311  # nosec B311
     rounds: list[Config] = []
@@ -173,7 +225,10 @@ def main() -> None:
         case "serve":
             telemetry = Telemetry(args.trace_file, "abb-specialist") if args.trace_file else None
             app = create_app(
-                args.scenario, args.public_url or f"http://{args.host}:{args.port}", telemetry
+                args.scenario,
+                args.public_url or f"http://{args.host}:{args.port}",
+                telemetry,
+                _server_policy(args),
             )
             try:
                 uvicorn.run(
@@ -229,11 +284,24 @@ def main() -> None:
                         "wait_ms",
                         "parallel",
                         "telemetry",
+                        "timeout",
                         "specialist_repetitions",
                         "fanout_limit",
                         "context_copies",
                         "tool_repetitions",
                         "resource_reads",
+                        "fault_mode",
+                        "fault_every",
+                        "fault_delay_ms",
+                        "max_attempts",
+                        "attempt_timeout",
+                        "retry_backoff_ms",
+                        "idempotency",
+                        "idempotency_capacity",
+                        "idempotency_ttl_seconds",
+                        "service_concurrency",
+                        "queue_capacity",
+                        "queue_timeout_ms",
                     )
                 }
             )
@@ -259,12 +327,25 @@ def main() -> None:
                         "telemetry",
                         "timeout",
                         "concurrency",
+                        "warmup",
                         "seed",
                         "specialist_repetitions",
                         "fanout_limit",
                         "context_copies",
                         "tool_repetitions",
                         "resource_reads",
+                        "fault_mode",
+                        "fault_every",
+                        "fault_delay_ms",
+                        "max_attempts",
+                        "attempt_timeout",
+                        "retry_backoff_ms",
+                        "idempotency",
+                        "idempotency_capacity",
+                        "idempotency_ttl_seconds",
+                        "service_concurrency",
+                        "queue_capacity",
+                        "queue_timeout_ms",
                     )
                 }
                 | {

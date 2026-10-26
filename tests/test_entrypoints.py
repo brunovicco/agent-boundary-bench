@@ -26,6 +26,8 @@ def test_cli_workflow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             ".2",
             "--rate",
             "5",
+            "--warmup",
+            "1",
             "--output",
             str(output),
         ],

@@ -35,6 +35,11 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
     ]
     if manifest.offered != math.ceil(manifest.config.rate * manifest.config.duration):
         raise ValueError("manifest offered count differs from scheduled workload")
+    if (
+        manifest.schema_version == "3"
+        and manifest.warmup_succeeded + manifest.warmup_failed != manifest.config.warmup
+    ):
+        raise ValueError("manifest warmup counts differ from configured warmup")
     if len(samples) != manifest.offered or sorted(s.index for s in samples) != list(
         range(manifest.offered)
     ):
@@ -66,6 +71,16 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
         "context_copies": manifest.config.context_copies,
         "tool_repetitions": manifest.config.tool_repetitions,
         "resource_reads_per_specialist": manifest.config.resource_reads,
+        "warmup_succeeded": manifest.warmup_succeeded,
+        "warmup_failed": manifest.warmup_failed,
+        "fault_mode": manifest.config.fault_mode,
+        "fault_every": manifest.config.fault_every,
+        "max_attempts": manifest.config.max_attempts,
+        "attempt_timeout": manifest.config.attempt_timeout,
+        "retry_backoff_ms": manifest.config.retry_backoff_ms,
+        "idempotency": str(manifest.config.idempotency).lower(),
+        "service_concurrency": manifest.config.service_concurrency,
+        "queue_capacity": manifest.config.queue_capacity,
         "n_success": len(successful),
         "offered": manifest.offered,
         "completed": len(completed),
@@ -91,10 +106,17 @@ def summarize(path: Path) -> dict[str, str | int | float | None]:
         )
         if successful
         else None,
-        "remote_calls": sum(s.remote_calls or 0 for s in successful),
+        "remote_calls": sum(s.remote_calls or 0 for s in completed),
         "tool_calls": sum(s.tool_calls or 0 for s in successful),
         "resource_reads": sum(s.resource_reads or 0 for s in successful),
         "context_bytes": sum(s.context_bytes or 0 for s in successful),
+        "attempts": sum(s.attempts or 0 for s in completed),
+        "retries": sum(s.retries or 0 for s in completed),
+        "kernel_executions": sum(s.kernel_executions or 0 for s in completed),
+        "idempotency_hits": sum(s.idempotency_hits or 0 for s in completed),
+        "injected_failures": sum(s.injected_failures or 0 for s in completed),
+        "rejections": sum(s.rejections or 0 for s in completed),
+        "backpressure_wait_ms": sum(s.backpressure_wait_ms or 0 for s in completed),
         "commit_sha": manifest.commit_sha,
     }
     row["specialist_ms_mean"] = (
@@ -139,9 +161,9 @@ def report(source: Path, output: Path) -> Path:
         "P99 with small n is exploratory. No saturation or cross-hardware conclusion "
         "follows from smoke runs.",
         "",
-        "| Scenario | Payload | Wait | Mode | OTel | Target RPS | n | Drops | "
+        "| Scenario | Fault | Idempotent | Attempts/retries | Rejections | n | Drops | "
         "Errors/timeouts | P50 ms | P95 ms | P99 ms |",
-        "|---|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for r in rows:
 
@@ -150,8 +172,9 @@ def report(source: Path, output: Path) -> Path:
             return f"{value:.3f}" if isinstance(value, (float, int)) else "N/A"
 
         lines.append(
-            f"| {r['scenario']} | {r['payload_bytes']} | {r['wait_ms']} | {r['mode']} | "
-            f"{r['telemetry']} | {r['target_rps']} | {r['n_success']} | {r['dropped']} | "
+            f"| {r['scenario']} | {r['fault_mode']} | {r['idempotency']} | "
+            f"{r['attempts']}/{r['retries']} | {r['rejections']} | {r['n_success']} | "
+            f"{r['dropped']} | "
             f"{r['errors']}/{r['timeouts']} | {fmt('p50_ms')} | {fmt('p95_ms')} | {fmt('p99_ms')} |"
         )
     lines += [
@@ -168,6 +191,8 @@ def report(source: Path, output: Path) -> Path:
         "remote trust boundaries.",
         "MCP rows measure tool/resource access and must not be interpreted as an A2A "
         "replacement or agent-delegation ranking.",
+        "Retry, idempotency and backpressure rows are controlled application-layer "
+        "treatments; they do not model every host or network failure.",
         "Local deployment has fewer processes; the experiment does not prove a "
         "universal topology winner.",
         "",
@@ -277,6 +302,7 @@ def plot(rows: list[dict[str, str | int | float | None]], path: Path) -> None:
         f"{r['scenario']} / {int(str(r['payload_bytes'])) // 1024}KiB / {r['wait_ms']}ms / "
         f"{r['mode']} / ctx={r['context_copies']} / tools={r['tool_repetitions']} / "
         f"res={r['resource_reads_per_specialist']} / otel={r['telemetry']} / r{r['repetition']}"
+        f" / fault={r['fault_mode']} / idem={r['idempotency']}"
         for r in valid
     ]
     axis.plot(range(len(valid)), [float(str(r["p50_ms"])) for r in valid], "o", label="P50")

@@ -14,7 +14,25 @@ All payload targets refer to sorted compact ASCII domain case JSON, not complete
 
 The minimum workload performs integer rules and hashes the case. 50/250 ms variants perform the same rules then await `asyncio.sleep`. Scheduler pressure can make actual elapsed waits longer. These are controlled requested waits, not calibrated CPU budgets. Larger cases require additional real hashing/serialization work, which is part of the observed payload-size effect.
 
-Sequential and concurrent orchestration use the same ordered task list. v0.2 supports 1–32 repetitions of all three roles and a 1–128 bounded parallel fan-out limit. Concurrent orchestration uses TaskGroup cancellation on error and a semaphore around adapter invocations. A single supervisor deadline covers fan-out and fan-in. There are no retries or idempotency guarantees beyond pure deterministic computation; those remain v0.3 work.
+Sequential and concurrent orchestration use the same ordered task list. v0.2 supports 1–32 repetitions of all three roles and a 1–128 bounded parallel fan-out limit. Concurrent orchestration uses TaskGroup cancellation on error and a semaphore around adapter invocations. A single supervisor deadline covers fan-out and fan-in. Released v0.2 records have no retry or idempotency treatment; those controls first appear in schema v3 development runs.
+
+In v0.3 development, retry/fault/backpressure controls apply only when explicitly configured on
+delegation scenarios. One application-level delegation ID is stable across attempts and distinct
+for every specialist operation. `fail-first`, `delay-first` and `after-commit` are deterministic
+application-layer treatments selected from the ID hash; they are not network emulation. The
+supervisor deadline still bounds the entire fan-out/retry sequence, while `attempt_timeout`
+bounds one attempt. Fixed backoff is recorded as policy, not included in specialist time.
+
+`after-commit` executes the kernel before returning the injected transient failure. With
+idempotency disabled, the retry executes the kernel again. With it enabled, the worker-local
+bounded TTL cache returns the stored result. This kernel is side-effect free, so this tests
+duplicate work and control flow rather than proving safe idempotency for external writes.
+
+Service admission is a separate boundary from generator concurrency. `service_concurrency`
+limits active specialist operations; `queue_capacity` bounds waiters; `queue_timeout_ms` bounds
+their wait. An immediate/expired service rejection is not a generator drop. Parallel TaskGroup
+cancellation after one rejected specialist can terminate sibling operations and is part of the
+declared orchestration behavior.
 
 MCP context amplification sends 0/1/4/16 exact copies of task JSON as unused synthetic context, validating equality at the tool boundary. It is not a claim about LLM attention or tokenization. `tool_repetitions` repeats deterministic tool access and requires equal results. `resource_reads` bypasses the client response cache and validates every returned fixture. Factor these independently; a fully crossed matrix changes several causal variables at once.
 
@@ -37,6 +55,10 @@ k6 supplies an independent `constant-arrival-rate` path through a common supervi
 - Boundary calls: `remote_calls` is retained for schema compatibility and counts adapter boundary operations. MCP additionally reports `tool_calls`, `resource_reads` and duplicated `context_bytes`; `mcp-inprocess` has protocol operations but no network.
 - Throughput: successful executions divided by the elapsed measurement window including drain. Effective admitted arrival rate is non-dropped starts / configured arrival duration. Planned rate, offered count and dropped count remain separately available.
 - Errors/timeouts: failures among admitted executions; drops belong to the generator, not service error rate. Failure durations remain in raw samples; success percentiles must not obscure availability.
+- Retry/idempotency: attempts, retries, kernel executions, cache hits, injected failures,
+  admission rejections and wait time are direct counters. Partial failed-attempt measurements are
+  retained when the adapter observed them. Equality of final business output does not imply
+  exactly-once execution.
 - CPU: process user+system seconds sampled at approximately 100 ms. Separate harness and worker deltas; divide by elapsed seconds to obtain average consumed cores if needed. Not normalized to host CPU count.
 - Memory: sampled process RSS, not allocator usage or exact instantaneous peak. Monitoring itself has overhead and runs in both baseline modes.
 
@@ -55,5 +77,10 @@ Off uses NullProbe and performs no explicit OTel calls at benchmark boundaries. 
 Reject missing/tampered raw files, bad schemas, non-contiguous sample indices and manifest count mismatches. An aborted round lacks a completed manifest. Keep its logs for diagnosis; do not manufacture a result. Success requires real adapter contract equality, official A2A and MCP protocol tests, error/timeout tests, strict typing, lint and architecture checks. CI is a functional test environment; its timings are never promoted as comparable measurements.
 
 Same-host synthetic waits do not establish cross-region cost, CPU parallelism, fault isolation, tenant/security isolation, availability, model behavior or independent scaling. Record OS, architecture, hardware/cgroup constraints, dependency lock, commit and dirty state. Native rounds use no application image and record its digest as null. Container campaigns must capture their actual built images and topology; the provided Compose smoke alone is not a performance campaign.
+
+The v0.3 application fault injector does not change this limitation. Infrastructure fault,
+resource-isolation and cross-host campaigns require separately recorded topology and enforcement
+evidence. Do not label an injected application failure as a process crash, packet loss or regional
+outage.
 
 References consulted 2026-10-25: [k6 open arrivals](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/), [Azure chatty I/O](https://learn.microsoft.com/en-us/azure/architecture/antipatterns/chatty-io/), [Azure design principles](https://learn.microsoft.com/en-us/azure/architecture/guide/design-principles/).
