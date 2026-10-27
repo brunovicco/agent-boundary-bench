@@ -7,18 +7,22 @@
 
 A reproducible laboratory asking: **what changes when the same operation crosses a process and protocol boundary?** Synthetic corporate credit analysis runs through delegation boundaries (in-process Python, conventional HTTP and A2A JSON-RPC) and separate MCP tool-access boundaries (SDK direct dispatch, stdio and Streamable HTTP). No LLM, commercial key, database or real financial data is used.
 
-[Português](README.pt-BR.md) · [v0.2.0 release notes](docs/RELEASE_0.2.0.md) · [v0.3 development](docs/RESILIENCE.md) · [Methodology](docs/METHODOLOGY.md) · [Compatibility research](docs/COMPATIBILITY.md) · [Validation](VALIDATION.md)
+[Português](README.pt-BR.md) · [v0.2.0 release notes](docs/RELEASE_0.2.0.md) · [v0.3 resilience](docs/RESILIENCE.md) · [v0.3 resource isolation](docs/RESOURCE_ISOLATION.md) · [Methodology](docs/METHODOLOGY.md) · [Compatibility research](docs/COMPATIBILITY.md) · [Validation](VALIDATION.md)
 
 **Current release: v0.2.0.** It extends the v0.1 delegation laboratory with official MCP Python SDK v2 tools/resources, bounded generalized fan-out/fan-in and controlled context/access amplification. See [the release notes](docs/RELEASE_0.2.0.md) for the delivered scope and [the validation record](VALIDATION.md) for exactly what ran. A smoke or pilot result does not establish saturation or a general architecture ranking.
 
-**Active development: `0.3.0.dev0`.** The `feat/v0.3.0` line adds controlled delegation faults,
-bounded retries, stable idempotency IDs and service backpressure. This is development scope, not
-a published v0.3 release or sustained-failure evidence. See [RESILIENCE.md](docs/RESILIENCE.md).
+**Active development: `0.3.0.dev0`.** Controlled delegation faults, bounded retries, stable
+idempotency IDs and service backpressure are implemented. The resource-isolation milestone adds
+a container treatment, fixed synthetic CPU/memory work and observed cgroup v2 evidence. Both
+macOS Docker smoke profiles are validated and committed; this is not a published v0.3 release or
+sustained-capacity result. See [RESILIENCE.md](docs/RESILIENCE.md),
+[RESOURCE_ISOLATION.md](docs/RESOURCE_ISOLATION.md) and the
+[resource validation record](docs/validation/v0.3-resource-isolation.md).
 
 ## The experiment
 
 | Scenario | Delegation | Processes, excluding generator | Persistence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | A0 `local` | Typed Python port | Supervisor with embedded specialists | None |
 | A1 `http` | JSON over persistent HTTP/1.1 | Supervisor + one specialist worker | None |
 | A2 `a2a` | A2A 1.0 JSON-RPC, official SDK | Supervisor + one specialist worker | Immediate Message replies |
@@ -26,7 +30,7 @@ a published v0.3 release or sustained-failure evidence. See [RESILIENCE.md](docs
 MCP is a separate treatment family for tool/resource access:
 
 | Scenario | Tool-access boundary | Processes, excluding generator | MCP transport |
-|---|---|---:|---|
+| --- | --- | ---: | --- |
 | T0 `mcp-inprocess` | Official SDK direct dispatcher | Supervisor with embedded tool server | In-process SDK facility |
 | T1 `mcp-stdio` | Official SDK client and child server | Supervisor + one tool worker | JSON-RPC over stdio |
 | T2 `mcp-streamable-http` | Official SDK client and remote server | Supervisor + one tool worker | Streamable HTTP |
@@ -59,7 +63,9 @@ A2A delegates work to an independently exposed agent. MCP exposes tools, resourc
 5. Retry can recover availability while duplicating work unless the delegated operation has an
    explicit idempotency strategy.
 
-These require matched conditions and repetitions. An artificial async wait models waiting, not CPU work or LLM inference.
+These require matched conditions and repetitions. An artificial async wait models waiting, not
+CPU work or LLM inference. `cpu_iterations` and `memory_bytes` are separate fixed synthetic
+workloads; neither is a duration-calibrated model workload.
 
 ## Quick start
 
@@ -121,6 +127,14 @@ The unchanged business result is insufficient evidence on its own: inspect `atte
 `kernel_executions`, `idempotency_hits`, `injected_failures`, `rejections` and
 `backpressure_wait_ms` in schema v3 raw data and reports.
 
+Run a native resource-work smoke without claiming container isolation:
+
+```bash
+uv run abb run --scenario a2a --profile smoke --wait-ms 50 \
+  --cpu-iterations 25000 --memory-bytes 8388608 \
+  --output results/cpu-work-native-smoke
+```
+
 Campaign order is shuffled independently within each repetition using an explicit seed. `campaign.json` stores the planned order and completed rounds. Use a new output directory for each campaign. Failed warmup/startup aborts visibly; incomplete round directories lack a completed manifest and must not be treated as results.
 
 ## Containers and health
@@ -136,6 +150,11 @@ docker compose down --remove-orphans
 ```
 
 HTTP, A2A and MCP Streamable HTTP use the same image, one worker, 1 CPU and 512 MiB limits. A2A advertises `http://a2a:8100/rpc` inside Compose; MCP is available at `http://mcp:8100/mcp`. `verify` executes all three public protocol clients and compares their business results. Compose build, health and equivalence checks were validated on macOS; GitHub Actions executes the same functional topology without publishing runner timings. Native `abb run` intentionally uses native subprocesses, not these containers; never relabel a native result as a Docker measurement. Save actual built image IDs before any separately designed container campaign.
+
+The optional `compose.isolation.yaml` overlay runs the harness in a container and uses separate,
+configurable cgroups for HTTP/A2A services. It records observed cgroup v2 limits/counters rather
+than trusting the profile label. Smoke/full commands and interpretation rules are in
+[RESOURCE_ISOLATION.md](docs/RESOURCE_ISOLATION.md).
 
 ## Independent k6 generator
 
@@ -153,11 +172,11 @@ ABB_RATE=20 ABB_DURATION=10s k6 run --out json=results/k6/raw.jsonl \
   --summary-export results/k6/summary.json k6/arrival.js
 ```
 
-Stop terminal 1 with Ctrl-C. Repeat for any of the six scenarios. k6 uses `constant-arrival-rate`, fixed preallocated VUs, three warmup requests and explicit dropped-iteration/error thresholds. Custom `abb_measured_*` metrics exclude setup; built-in HTTP metrics include warmup. The extra supervisor HTTP ingress is common to all k6 scenarios. **Keep k6 and native latencies separate.** k6's own JSON/summary are supplemental generator validation, not inputs to `abb report`. Native manifests are the canonical v0.2 measurement schema; committed v0.1 records remain readable. Full container/k6 resource campaigns require their own environment records.
+Stop terminal 1 with Ctrl-C. Repeat for any of the six scenarios. k6 uses `constant-arrival-rate`, fixed preallocated VUs, three warmup requests and explicit dropped-iteration/error thresholds. Custom `abb_measured_*` metrics exclude setup; built-in HTTP metrics include warmup. The extra supervisor HTTP ingress is common to all k6 scenarios. **Keep k6 and native latencies separate.** k6's own JSON/summary are supplemental generator validation, not inputs to `abb report`. Native manifests use the current schema while committed v0.1/v0.2 records remain readable. Full container/k6 resource campaigns require their own environment records.
 
 ## Data and interpretation
 
-Each completed round contains `manifest.json`, `samples.jsonl`, `resources.jsonl`, and spans when enabled. Reports verify schemas, counts, contiguous sample IDs and file hashes before calculating P50/P95/P99, mean, median, throughput, failures, timeouts, body bytes, calls, retry/idempotency/admission counters, CPU seconds and sampled peak RSS. `telemetry-deltas.csv` contains unique matched on/off pairs; `span-summary.csv` excludes warmup through measured trace IDs. Percentiles describe successful offered-arrival-to-completion latency, including scheduler lag. Errors/drops/rejections are reported separately. See [schemas and definitions](docs/RESULTS_SCHEMA.md).
+Each completed round contains `manifest.json`, `samples.jsonl`, `resources.jsonl`, and spans when enabled. Reports verify schemas, counts, contiguous sample IDs and file hashes before calculating P50/P95/P99, mean, median, throughput, failures, timeouts, body bytes, calls, retry/idempotency/admission counters, process CPU/RSS and available cgroup v2 CPU/memory observations. `telemetry-deltas.csv` contains unique matched on/off pairs; `span-summary.csv` excludes warmup through measured trace IDs. Percentiles describe successful offered-arrival-to-completion latency, including scheduler lag. Errors/drops/rejections are reported separately. See [schemas and definitions](docs/RESULTS_SCHEMA.md).
 
 `0` bytes/calls means no boundary activity for local success; `null` means unmeasured or unavailable, especially partial failed executions. HTTP/A2A byte fields are observed HTTP bodies. MCP byte fields are explicit tool arguments, text results and resource URI/content; they exclude JSON-RPC/HTTP framing. `context_bytes`, `tool_calls` and `resource_reads` expose amplification directly. The manifest records this scope, so unlike byte definitions must not be silently pooled. No subtraction of means is presented as a causal network decomposition.
 
@@ -177,6 +196,12 @@ for Streamable HTTP (five rounds, 50 samples per boundary). Adding two uncached 
 per specialist increased all three observed medians. These short shared-host results validate
 the experiment path; they are not sustained-capacity or protocol-substitutability claims.
 
+The v0.3 container resource smoke completed 24/24 rounds and 120/120 requests with no errors,
+drops or sampling failures. In the single A2A CPU-plus-memory round, specialist throttling was
+observed under the 0.25-CPU treatment together with P50 1,053.340 ms, versus zero throttling and
+P50 104.917 ms at one CPU. Each condition has only one five-request round; this validates that
+the isolation treatment is measurable, not a portable 10× penalty or a capacity conclusion.
+
 - A modular monolith can avoid serialization/process boundaries; this alone says nothing about organizational autonomy or fault containment requirements.
 - A service boundary introduces operational components and failure modes. One-host latency does not quantify isolation, independent deployment or cross-region behavior.
 - A2A can standardize agent interfaces and discovery. This experiment uses immediate replies; it does not price durable tasks or streaming.
@@ -188,6 +213,6 @@ Use [real recorded evidence](VALIDATION.md) within its limits. General conclusio
 
 `domain/` owns rules and fixtures; `application/` owns orchestration and ports; `adapters/` owns transport translation; `benchmark/`, `observability/` and `reporting/` own experiment mechanics. `entrypoints/` composes them. Architecture checks enforce inward dependency direction.
 
-Generated from [codex-python-engineering-harness](https://github.com/brunovicco/codex-python-engineering-harness), service profile, with exact provenance in [HARNESS.md](docs/HARNESS.md). [ADRs](docs/adr/) explain design trade-offs. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [ROADMAP.md](docs/ROADMAP.md), the [v0.2.0 release notes](docs/RELEASE_0.2.0.md) and [v0.3 development scope](docs/RESILIENCE.md). CI runs functional checks and never publishes shared-runner timings as comparable benchmarks.
+Generated from [codex-python-engineering-harness](https://github.com/brunovicco/codex-python-engineering-harness), service profile, with exact provenance in [HARNESS.md](docs/HARNESS.md). [ADRs](docs/adr/) explain design trade-offs. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [ROADMAP.md](docs/ROADMAP.md), the [v0.2.0 release notes](docs/RELEASE_0.2.0.md), [v0.3 resilience](docs/RESILIENCE.md) and [resource isolation](docs/RESOURCE_ISOLATION.md). CI runs functional checks and never publishes shared-runner timings as comparable benchmarks.
 
 The canonical public repository is [brunovicco/agent-boundary-bench](https://github.com/brunovicco/agent-boundary-bench). Recovery bundles are export artifacts only and are not configured as the normal Git remote.

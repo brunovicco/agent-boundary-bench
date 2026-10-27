@@ -1,12 +1,15 @@
 """Lifecycle of local delegates and equivalent independent specialist workers."""
 
 import asyncio
+import os
 import socket
 import subprocess  # nosec B404
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -15,6 +18,37 @@ from agent_boundary_bench.adapters.mcp import MCPDelegate
 from agent_boundary_bench.adapters.remote import RemoteDelegate
 from agent_boundary_bench.application.supervisor import Delegate, Probe
 from agent_boundary_bench.benchmark.models import Config
+
+
+@dataclass(frozen=True)
+class ResourceTarget:
+    """A specialist resource source, either a local PID or a metadata endpoint."""
+
+    pid: int | None = None
+    url: str | None = None
+    external: bool = False
+
+
+def external_endpoint(config: Config) -> str | None:
+    """Resolve an explicit Compose endpoint without accepting credentials or URL extras."""
+    key = {"http": "ABB_HTTP_ENDPOINT", "a2a": "ABB_A2A_ENDPOINT"}.get(config.scenario)
+    if key is None:
+        return None
+    value = os.getenv(key)
+    if value is None:
+        return None
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path not in ("", "/")
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(f"{key} must be a credential-free HTTP origin")
+    return value.rstrip("/")
 
 
 def free_port() -> int:
@@ -42,10 +76,26 @@ async def runtime(
     config: Config,
     probe: Probe,
     directory: Path,
-) -> AsyncIterator[tuple[Delegate, int | None]]:
+) -> AsyncIterator[tuple[Delegate, ResourceTarget | None]]:
     """Own each adapter and any one-worker process required by its boundary."""
     if config.scenario == "local":
         yield LocalDelegate(probe, config.resilience_policy()), None
+        return
+    configured_endpoint = external_endpoint(config)
+    if configured_endpoint is not None:
+        delegate = RemoteDelegate(
+            configured_endpoint,
+            config.scenario,
+            probe,
+            config.telemetry,
+            config.timeout,
+        )
+        try:
+            await health(configured_endpoint)
+            await delegate.prepare()
+            yield delegate, ResourceTarget(url=configured_endpoint, external=True)
+        finally:
+            await delegate.close()
         return
     if config.scenario in ("mcp-inprocess", "mcp-stdio"):
         mcp_delegate = MCPDelegate(
@@ -114,7 +164,7 @@ async def runtime(
     with (directory / "specialist.log").open("w", encoding="utf-8") as logfile:
         process = subprocess.Popen(command, stdout=logfile, stderr=logfile)  # noqa: S603  # nosec B603
         if config.scenario == "mcp-streamable-http":
-            delegate: RemoteDelegate | MCPDelegate = MCPDelegate(
+            running_delegate: RemoteDelegate | MCPDelegate = MCPDelegate(
                 config.scenario,
                 probe,
                 config.timeout,
@@ -125,7 +175,7 @@ async def runtime(
                 url,
             )
         else:
-            delegate = RemoteDelegate(
+            running_delegate = RemoteDelegate(
                 url,
                 config.scenario,
                 probe,
@@ -134,10 +184,10 @@ async def runtime(
             )
         try:
             visible_pid = await health(url)
-            await delegate.prepare()
-            yield delegate, visible_pid
+            await running_delegate.prepare()
+            yield running_delegate, ResourceTarget(pid=visible_pid)
         finally:
-            await delegate.close()
+            await running_delegate.close()
             process.terminate()
             try:
                 await asyncio.to_thread(process.wait, 5)

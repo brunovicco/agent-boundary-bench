@@ -17,6 +17,8 @@ Dependency auditing needs network access; application workloads work offline aft
 Use `uv run abb --help`, the README and docs/METHODOLOGY.md for execution options.
 The Dockerfile has a real default HTTP specialist command and a non-root runtime user.
 Compose runs equivalent HTTP, A2A and MCP Streamable HTTP workers and provides a functional verification service.
+The optional `compose.isolation.yaml` overlay and its evidence validator are documented in
+`docs/RESOURCE_ISOLATION.md`; recreate service containers when changing resource profiles.
 
 Generated Codex settings/hooks/skills are retained from the selected harness. Review and trust
 them in your own environment before activation. Changes to experimental semantics require

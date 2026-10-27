@@ -28,6 +28,13 @@
           "title": "Context Copies",
           "type": "integer"
         },
+        "cpu_iterations": {
+          "default": 0,
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Cpu Iterations",
+          "type": "integer"
+        },
         "duration": {
           "default": 2,
           "exclusiveMinimum": 0,
@@ -96,6 +103,13 @@
           "maximum": 8,
           "minimum": 1,
           "title": "Max Attempts",
+          "type": "integer"
+        },
+        "memory_bytes": {
+          "default": 0,
+          "maximum": 67108864,
+          "minimum": 0,
+          "title": "Memory Bytes",
           "type": "integer"
         },
         "parallel": {
@@ -327,6 +341,11 @@
       "title": "Python",
       "type": "string"
     },
+    "resource_sampling": {
+      "additionalProperties": true,
+      "title": "Resource Sampling",
+      "type": "object"
+    },
     "resource_sha256": {
       "title": "Resource Sha256",
       "type": "string"
@@ -340,7 +359,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "3",
+      "default": "4",
       "title": "Schema Version",
       "type": "string"
     },

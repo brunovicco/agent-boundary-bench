@@ -100,6 +100,8 @@ async def supervise(
     *,
     specialist_repetitions: int = 1,
     fanout_limit: int = 64,
+    cpu_iterations: int = 0,
+    memory_bytes: int = 0,
     resilience: ResiliencePolicy | None = None,
     execution_id: str | None = None,
 ) -> Execution:
@@ -112,7 +114,7 @@ async def supervise(
     policy = resilience or ResiliencePolicy()
     base_id = execution_id or uuid4().hex
     tasks = [
-        AnalysisTask(specialist, case, wait_ms)
+        AnalysisTask(specialist, case, wait_ms, cpu_iterations, memory_bytes)
         for _ in range(specialist_repetitions)
         for specialist in Specialist
     ]

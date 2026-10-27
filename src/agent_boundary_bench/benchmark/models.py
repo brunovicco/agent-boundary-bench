@@ -24,6 +24,8 @@ class Config(BaseModel):
     scenario: Scenario = "local"
     payload_bytes: Literal[1024, 16384, 131072] = 1024
     wait_ms: Literal[0, 50, 250] = 0
+    cpu_iterations: int = Field(default=0, ge=0, le=1000000)
+    memory_bytes: int = Field(default=0, ge=0, le=67108864)
     parallel: bool = False
     telemetry: bool = False
     rate: int = Field(default=5, ge=1, le=10000)
@@ -61,6 +63,11 @@ class Config(BaseModel):
             raise ValueError("context/tool/resource amplification is valid only for MCP scenarios")
         if self.service_concurrency == 0 and self.queue_capacity:
             raise ValueError("queue_capacity requires service_concurrency")
+        active_tasks = (
+            min(3 * self.specialist_repetitions, self.fanout_limit) if self.parallel else 1
+        )
+        if self.memory_bytes * active_tasks > 256 * 1024 * 1024:
+            raise ValueError("declared per-execution concurrent memory exceeds 256 MiB")
         if self.scenario in MCP_SCENARIOS and self.resilience_policy().enabled:
             raise ValueError("v0.3 resilience controls apply only to delegation scenarios")
         return self
@@ -116,21 +123,39 @@ class Sample(BaseModel):
 
 
 class ResourceSample(BaseModel):
-    """OS process sample; CPU seconds are cumulative, RSS is instantaneous."""
+    """OS process/cgroup sample; cumulative and instantaneous fields remain distinct."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+    schema_version: str = "2"
     elapsed_ms: float
     role: Literal["harness", "specialist"]
     pid: int
     cpu_seconds: float
     rss_bytes: int
+    cgroup_version: Literal["v2"] | None = None
+    cpu_usage_usec: int | None = None
+    cpu_user_usec: int | None = None
+    cpu_system_usec: int | None = None
+    cpu_nr_periods: int | None = None
+    cpu_nr_throttled: int | None = None
+    cpu_throttled_usec: int | None = None
+    cpu_limit_cores: float | None = None
+    memory_current_bytes: int | None = None
+    memory_peak_bytes: int | None = None
+    memory_limit_bytes: int | None = None
+    memory_events_low: int | None = None
+    memory_events_high: int | None = None
+    memory_events_max: int | None = None
+    memory_events_oom: int | None = None
+    memory_events_oom_kill: int | None = None
+    memory_events_oom_group_kill: int | None = None
 
 
 class Manifest(BaseModel):
     """Machine-readable provenance of a real round, never fabricated hardware data."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-    schema_version: str = "3"
+    schema_version: str = "4"
     run_id: str
     started_at: str
     completed_at: str
@@ -154,4 +179,5 @@ class Manifest(BaseModel):
     arrival_window_seconds: float
     sample_sha256: str
     resource_sha256: str
+    resource_sampling: dict[str, object] = Field(default_factory=dict)
     limitations: list[str]

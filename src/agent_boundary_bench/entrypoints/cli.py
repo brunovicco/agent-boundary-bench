@@ -96,6 +96,8 @@ def parser() -> argparse.ArgumentParser:
 def _topology_arguments(command: argparse.ArgumentParser) -> None:
     """Add topology, amplification and v0.3 resilience controls."""
     command.add_argument("--specialist-repetitions", type=int, default=1)
+    command.add_argument("--cpu-iterations", type=int, default=0)
+    command.add_argument("--memory-bytes", type=int, default=0)
     command.add_argument("--fanout-limit", type=int, default=64)
     command.add_argument("--context-copies", type=int, choices=[0, 1, 4, 16], default=0)
     command.add_argument("--tool-repetitions", type=int, default=1)
@@ -282,6 +284,8 @@ def main() -> None:
                         "scenario",
                         "payload_bytes",
                         "wait_ms",
+                        "cpu_iterations",
+                        "memory_bytes",
                         "parallel",
                         "telemetry",
                         "timeout",
@@ -323,6 +327,8 @@ def main() -> None:
                         "scenario",
                         "payload_bytes",
                         "wait_ms",
+                        "cpu_iterations",
+                        "memory_bytes",
                         "parallel",
                         "telemetry",
                         "timeout",

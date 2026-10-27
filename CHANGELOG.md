@@ -12,9 +12,24 @@
 - Separated timeout treatments from the general resilience matrix to avoid classifying ordinary
   transport jitter as an injected timeout.
 - Kept MCP v2 tool access separate from the delegation-resilience experiment family.
+- Added a container resource-isolation topology with independently configurable harness and
+  specialist CPU/memory limits.
+- Added deterministic fixed-iteration CPU work and fixed touched memory allocations without
+  conflating either with synthetic async waits.
+- Added schema v4 cgroup v2 CPU quota/usage/throttling, memory limit/peak/event observations and
+  explicit resource-sampling failure accounting.
+- Added resource-isolation smoke/full matrices, integrity-checked reporting and ADR 0008.
+- Made control-plane sampling loss explicit and bounded so CPU starvation remains observable
+  without fabricating missing resource samples.
+- Propagated and validated explicit host commit/dirty provenance for container campaigns whose
+  images intentionally exclude the `.git` directory.
+- Committed the validated macOS Docker resource-isolation smoke: 24 rounds, 120/120 successful
+  executions and zero resource-sampling failures across generous and constrained profiles.
 
-Resource-isolation campaigns, cross-host network faults, sustained isolated capacity evidence and
-advanced collector/exporter loss accounting remain in development.
+Cross-host network faults, sustained isolated capacity evidence and advanced collector/exporter
+loss accounting remain in development. The committed resource-isolation smoke validates wiring
+and preserves bounded observations; the repeated 180-round-per-profile campaign is still required
+before capacity or general causal claims.
 
 ## 0.2.0 — 2026-10-25
 

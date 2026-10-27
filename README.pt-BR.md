@@ -7,16 +7,18 @@
 
 Laboratório reproduzível para investigar o custo de cruzar fronteiras de processo e protocolo. A família de delegação compara Python em processo, HTTP convencional e A2A 1.0 JSON-RPC. A família de acesso a ferramentas compara MCP v2 em processo, stdio e Streamable HTTP. Todas executam o mesmo kernel determinístico de crédito corporativo sintético.
 
-[README completo em inglês](README.md) · [Notas da v0.2.0](docs/RELEASE_0.2.0.md) · [Desenvolvimento v0.3](docs/RESILIENCE.md) · [Metodologia](docs/METHODOLOGY.md) · [Compatibilidade](docs/COMPATIBILITY.md) · [Validação realizada](VALIDATION.md)
+[README completo em inglês](README.md) · [Notas da v0.2.0](docs/RELEASE_0.2.0.md) · [Resiliência v0.3](docs/RESILIENCE.md) · [Isolamento de recursos v0.3](docs/RESOURCE_ISOLATION.md) · [Metodologia](docs/METHODOLOGY.md) · [Compatibilidade](docs/COMPATIBILITY.md) · [Validação realizada](VALIDATION.md)
 
 Não usa LLM, dados financeiros reais, chaves comerciais ou banco de dados. A versão atual, v0.2.0, inclui tools/resources MCP, fan-out/fan-in limitado e amplificação controlada de contexto e chamadas. Os papéis de especialistas continuam sintéticos; o laboratório não mede automaticamente autonomia de agentes nem benefícios de isolamento sob falha.
 
-A branch `feat/v0.3.0` está em desenvolvimento como `0.3.0.dev0`. O primeiro recorte inclui
-falhas controladas na delegação, retries limitados, IDs idempotentes e backpressure no serviço.
-Isso ainda não representa uma release v0.3 nem evidência de capacidade sustentada.
+A linha `0.3.0.dev0` implementa falhas controladas na delegação, retries limitados, IDs
+idempotentes e backpressure no serviço. O milestone de isolamento adiciona tratamento em
+containers, trabalho sintético fixo de CPU/memória e evidência observada de cgroup v2. Os dois
+perfis de smoke no Docker/macOS foram validados e versionados. Isso ainda não representa uma
+release v0.3 nem evidência de capacidade sustentada.
 
 | Cenário | Fronteira | Especialista remoto |
-|---|---|---|
+| --- | --- | --- |
 | A0 `local` | Interface Python tipada | Nenhum |
 | A1 `http` | JSON e HTTP/1.1 persistente | Um processo, um worker |
 | A2 `a2a` | A2A JSON-RPC e SDK oficial | Um processo, um worker |
@@ -24,12 +26,12 @@ Isso ainda não representa uma release v0.3 nem evidência de capacidade sustent
 Os cenários MCP respondem a outra pergunta experimental:
 
 | Cenário | Fronteira de acesso a ferramentas | Processo adicional |
-|---|---|---|
+| --- | --- | --- |
 | T0 `mcp-inprocess` | Dispatcher direto do SDK oficial | Não |
 | T1 `mcp-stdio` | MCP JSON-RPC por stdin/stdout | Um processo filho |
 | T2 `mcp-streamable-http` | MCP Streamable HTTP | Um processo, um worker |
 
-Os três especialistas compartilham as regras. O supervisor valida cada resposta contra o resultado determinístico esperado. Os casos têm corpo canônico de exatamente 1, 16 ou 128 KiB; os envelopes aumentam o tamanho efetivamente transferido. Esperas assíncronas de 50 e 250 ms simulam espera de I/O, **não trabalho de CPU**.
+Os três especialistas compartilham as regras. O supervisor valida cada resposta contra o resultado determinístico esperado. Os casos têm corpo canônico de exatamente 1, 16 ou 128 KiB; os envelopes aumentam o tamanho efetivamente transferido. Esperas assíncronas de 50 e 250 ms simulam espera de I/O, **não trabalho de CPU**. `cpu_iterations` e `memory_bytes` são workloads sintéticos fixos e separados; não são inferência nem duração calibrada.
 
 ## Executar
 
@@ -87,6 +89,14 @@ O schema v3 registra tentativas, retries, execuções do kernel, hits idempotent
 injetadas, rejeições e tempo de espera por admissão. Consulte
 [RESILIENCE.md](docs/RESILIENCE.md) antes de interpretar esses campos.
 
+Smoke nativo do workload de recursos, sem alegar isolamento por container:
+
+```bash
+uv run abb run --scenario a2a --profile smoke --wait-ms 50 \
+  --cpu-iterations 25000 --memory-bytes 8388608 \
+  --output results/cpu-work-native-smoke
+```
+
 ## Docker e k6
 
 ```bash
@@ -99,6 +109,11 @@ docker compose down --remove-orphans
 ```
 
 HTTP, A2A e MCP Streamable HTTP usam a mesma imagem e limites. O A2A anuncia o endereço interno `a2a:8100`; o MCP atende em `mcp:8100/mcp`. `verify` acessa os três serviços com seus clientes públicos e compara o resultado de negócio. Build, health checks e equivalência funcional do Compose foram validados no macOS; o GitHub Actions executa a mesma topologia funcional sem publicar tempos de runners compartilhados. O harness nativo usa subprocessos, não esses containers.
+
+O overlay opcional `compose.isolation.yaml` executa o harness em container e usa cgroups
+separados e configuráveis para HTTP/A2A. O schema v4 registra os limites e contadores cgroup v2
+realmente observados; o nome do perfil, sozinho, não comprova isolamento. Os comandos de smoke e
+campanha completa estão em [RESOURCE_ISOLATION.md](docs/RESOURCE_ISOLATION.md).
 
 Para k6, execute `uv run abb gateway --scenario a2a` em um terminal e, em outro, `ABB_RATE=20 ABB_DURATION=10s k6 run k6/arrival.js`. A configuração usa chegadas constantes independentes das respostas. Essa medição acrescenta uma entrada HTTP uniforme no supervisor; não misture seus números com os do harness nativo. O README em inglês mostra a gravação dos dados brutos do k6.
 
@@ -118,6 +133,12 @@ O objetivo é subsidiar decisões entre monólito modular, serviços e topologia
 
 O piloto MCP real executou 120 rodadas e concluiu 1.200/1.200 requisições sem erros, timeouts ou descartes. Na condição sem telemetria, sem cópias de contexto e sem leituras de resources, a mediana dos P50 por rodada foi 3,110 ms para dispatch direto, 5,842 ms para stdio e 6,315 ms para Streamable HTTP (cinco rodadas, 50 amostras por fronteira). Duas leituras não cacheadas por especialista elevaram as medianas observadas nas três fronteiras. São resultados curtos em host compartilhado: validam o caminho experimental, mas não demonstram capacidade sustentada nem substituição entre MCP e A2A.
 
-Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md), as [notas da v0.2.0](docs/RELEASE_0.2.0.md), o [escopo v0.3 em desenvolvimento](docs/RESILIENCE.md) e as [regras de contribuição](CONTRIBUTING.md).
+O smoke de isolamento da v0.3 concluiu 24/24 rodadas e 120/120 requisições sem erros, descartes
+ou falhas de amostragem. Na única rodada A2A com trabalho conjunto de CPU e memória, o especialista
+limitado a 0,25 CPU apresentou throttling e P50 de 1.053,340 ms, contra ausência de throttling e
+P50 de 104,917 ms com uma CPU. Cada condição contém apenas uma rodada de cinco requisições: isso
+valida que o tratamento é mensurável, não um fator portátil de 10× nem uma conclusão de capacidade.
+
+Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md), as [notas da v0.2.0](docs/RELEASE_0.2.0.md), a [resiliência v0.3](docs/RESILIENCE.md), o [isolamento de recursos](docs/RESOURCE_ISOLATION.md) e as [regras de contribuição](CONTRIBUTING.md).
 
 O repositório público canônico é [brunovicco/agent-boundary-bench](https://github.com/brunovicco/agent-boundary-bench). Bundles locais são apenas artefatos de recuperação e não substituem o remote Git oficial.
