@@ -44,6 +44,9 @@ jobs:
           export ABB_IMAGE_DIGEST="$(docker image inspect agent-boundary-bench:0.3.0-dev0 --format '{{.Id}}')"
           export ABB_ISOLATION_LABEL=ci-generous
           export ABB_ISOLATION_OUTPUT=ci-resource-isolation-smoke
+          # Pre-create the bind-mount source as the runner user. Otherwise Docker creates a
+          # root-owned ./results directory and the UID/GID-mapped harness cannot write /results.
+          mkdir -p results
           docker compose -f compose.yaml -f compose.isolation.yaml \
             --profile isolation up -d --wait --force-recreate http a2a
           docker compose -f compose.yaml -f compose.isolation.yaml \
