@@ -1,4 +1,4 @@
-# Validation record — 2026-10-25
+# Validation record — 2026-10-27
 
 ## Status
 
@@ -13,6 +13,11 @@ The canonical repository is public at
 Actions passed the native quality and Compose functional release gate at commit `99a5979` in
 [run 40230391324](https://github.com/brunovicco/agent-boundary-bench/actions/runs/40230391324).
 Shared-runner timings are never promoted as comparable benchmark results.
+
+The unreleased `0.3.0.dev0` line additionally has controlled resilience/backpressure smoke
+evidence and a validated Docker resource-isolation smoke. The latter ran both generous and
+constrained cgroup v2 profiles from clean commit `d910a570`; it is explicitly separate from the
+v0.2.0 release claim and from sustained-capacity evidence.
 
 The short smoke/pilot campaigns validate the experimental path and provide bounded observations.
 They do not establish sustained capacity, fault isolation or a general architecture ranking.
@@ -78,6 +83,29 @@ This validates container construction, health checks, service wiring and busines
 equivalence on the tested same-host Docker topology. It is not a container performance campaign,
 cross-host network test or evidence of failure isolation.
 
+### v0.3 resource-isolation validation on macOS
+
+The resource-isolation overlay was built and executed on Docker Desktop. The complete native
+quality gate passed with 53 tests and 91.62% branch-aware coverage before the final image build.
+Both 12-round profiles passed strict validation of raw hashes/counts, observed cgroup v2 limits,
+image digest, full expected commit and clean-worktree provenance.
+
+| Profile | Remote specialist | Rounds | Offered/succeeded | Sampling failures |
+|---|---|---:|---:|---:|
+| constrained | 0.25 CPU, 256 MiB | 12 | 60/60 | 0/192 |
+| generous | 1 CPU, 512 MiB | 12 | 60/60 | 0/212 |
+
+The harness retained one CPU and 512 MiB in both profiles. All 24 warmups succeeded; no error,
+timeout, drop, memory-pressure event or OOM kill was observed. Every manifest records commit
+`d910a57008c43636c38f4324dd398127f0f781de`, `git_dirty=false`, lock hash and image digest
+`sha256:7a342493c90b9ab08add17ee9618acf1147bc7cc1f04e48ba8fbfe6178043f16`.
+
+The A2A CPU-plus-memory condition produced the strongest bounded observation: constrained P50
+1,053.340 ms and 2.787763 seconds of specialist throttling versus generous P50 104.917 ms and
+zero throttling. This is one five-request round per profile, not a repeated effect estimate or
+portable protocol result. See the
+[dedicated validation record](docs/validation/v0.3-resource-isolation.md).
+
 ### Public GitHub Actions validation
 
 The first public workflow execution at commit `742ef24` provided useful independent evidence:
@@ -103,7 +131,8 @@ adapters, 1/16/128 KiB payloads, 0/50/250 ms requested waits, sequential/concurr
 bounded fan-out, context/tool/resource amplification, malformed input, timeout followed by
 successful recovery, A2A card/JSON-RPC, MCP discovery/tool/resource calls, W3C parent links,
 metadata-only span export, raw-data integrity and report generation. They do not claim upstream
-TCK certification or v0.3 fault-injection/recovery validation. Pytest treats warnings as errors.
+TCK certification or completion of the repeated v0.3 campaign matrices. Pytest treats warnings
+as errors.
 
 ## Real measurements
 
@@ -131,6 +160,11 @@ executions, with zero errors or dropped iterations. Delegation k6 manifests use 
 `c3f573a`; MCP k6 manifests use `4fd93ebc`. The gateway ingress and timing model differ from
 the native harness, so those latency samples are not pooled.
 
+Unreleased v0.3 development evidence adds 45 resilience/timeout/backpressure smoke rounds and
+24 resource-isolation rounds. The isolation dataset completed 120/120 requests and 24/24 warmups
+with zero errors, timeouts, drops or sampling failures. It remains separate from the v0.1/v0.2
+native totals above and from any sustained-capacity claim.
+
 [Recorded insights](reports/INSIGHTS.md), [raw datasets](experiments/results/) and the
 [reproduction guide](experiments/README.md) preserve outliers and scope. Native manifests
 record Python/SDK versions, commit/dirty status, lock hash, OS/CPU/cgroup constraints,
@@ -142,22 +176,23 @@ quota equivalent to eight cores and an 8 GiB memory limit. The v0.1 host reporte
 Platinum 8573C under equivalent visible CPU/cgroup constraints. These are host facts, not
 dedicated resource claims. Generator and system under test shared each host. MCP stdio worker
 CPU/RSS is null because the official high-level client does not expose its child PID through a
-public API. The macOS execution was a functional validation and is not pooled with Linux
-benchmark measurements.
+public API. The earlier v0.2 macOS execution was functional validation and is not pooled with
+Linux benchmark measurements. The separately labeled v0.3 isolation smoke remains scoped to its
+Docker Desktop environment.
 
 ## Artifacts and remaining checks
 
 Committed artifacts include raw JSONL/JSON, summary CSV, paired telemetry deltas, measured-span
 summaries, deterministic PNG charts, bilingual READMEs, schemas, methodology, compatibility
-study and six ADRs. Quality/build logs are under `docs/validation/`. Reports derive exclusively
+study and versioned ADRs. Quality/build logs are under `docs/validation/`. Reports derive exclusively
 from raw data; missing or tampered samples are rejected. No LLM, commercial key or real
 financial data was used.
 
 Remaining work before claiming broader experimental validation:
 
 1. Run longer isolated and repeated campaigns before article-level capacity conclusions.
-2. Implement v0.3 fault injection, retry, backpressure and resource-isolation treatments as
-   separately controlled experiments.
+2. Execute the complete repeated v0.3 matrices, including both 180-round resource profiles.
+3. Add cross-host network fault and fixed-total-resource-budget treatments where justified.
 
 The complete Git history can be restored with:
 

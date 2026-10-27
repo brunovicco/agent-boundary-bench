@@ -13,11 +13,12 @@ Não usa LLM, dados financeiros reais, chaves comerciais ou banco de dados. A ve
 
 A linha `0.3.0.dev0` implementa falhas controladas na delegação, retries limitados, IDs
 idempotentes e backpressure no serviço. O milestone de isolamento adiciona tratamento em
-containers, trabalho sintético fixo de CPU/memória e evidência observada de cgroup v2. Isso ainda não
-representa uma release v0.3 nem evidência de capacidade sustentada.
+containers, trabalho sintético fixo de CPU/memória e evidência observada de cgroup v2. Os dois
+perfis de smoke no Docker/macOS foram validados e versionados. Isso ainda não representa uma
+release v0.3 nem evidência de capacidade sustentada.
 
 | Cenário | Fronteira | Especialista remoto |
-|---|---|---|
+| --- | --- | --- |
 | A0 `local` | Interface Python tipada | Nenhum |
 | A1 `http` | JSON e HTTP/1.1 persistente | Um processo, um worker |
 | A2 `a2a` | A2A JSON-RPC e SDK oficial | Um processo, um worker |
@@ -25,7 +26,7 @@ representa uma release v0.3 nem evidência de capacidade sustentada.
 Os cenários MCP respondem a outra pergunta experimental:
 
 | Cenário | Fronteira de acesso a ferramentas | Processo adicional |
-|---|---|---|
+| --- | --- | --- |
 | T0 `mcp-inprocess` | Dispatcher direto do SDK oficial | Não |
 | T1 `mcp-stdio` | MCP JSON-RPC por stdin/stdout | Um processo filho |
 | T2 `mcp-streamable-http` | MCP Streamable HTTP | Um processo, um worker |
@@ -131,6 +132,12 @@ Nos cenários HTTP/A2A, bytes representam corpos HTTP observados. Nos cenários 
 O objetivo é subsidiar decisões entre monólito modular, serviços e topologias híbridas. Uma fronteira pode ter custo relevante para chamadas pequenas e ainda atender a requisitos de interoperabilidade ou implantação independente. Este ambiente não mede esses benefícios automaticamente: eles exigem experimentos próprios. Não há vencedor previamente definido.
 
 O piloto MCP real executou 120 rodadas e concluiu 1.200/1.200 requisições sem erros, timeouts ou descartes. Na condição sem telemetria, sem cópias de contexto e sem leituras de resources, a mediana dos P50 por rodada foi 3,110 ms para dispatch direto, 5,842 ms para stdio e 6,315 ms para Streamable HTTP (cinco rodadas, 50 amostras por fronteira). Duas leituras não cacheadas por especialista elevaram as medianas observadas nas três fronteiras. São resultados curtos em host compartilhado: validam o caminho experimental, mas não demonstram capacidade sustentada nem substituição entre MCP e A2A.
+
+O smoke de isolamento da v0.3 concluiu 24/24 rodadas e 120/120 requisições sem erros, descartes
+ou falhas de amostragem. Na única rodada A2A com trabalho conjunto de CPU e memória, o especialista
+limitado a 0,25 CPU apresentou throttling e P50 de 1.053,340 ms, contra ausência de throttling e
+P50 de 104,917 ms com uma CPU. Cada condição contém apenas uma rodada de cinco requisições: isso
+valida que o tratamento é mensurável, não um fator portátil de 10× nem uma conclusão de capacidade.
 
 Base escolhida: `codex-python-engineering-harness`, perfil `service`, preservando arquitetura, verificação e proveniência. Consulte os [ADRs](docs/adr/), o [roadmap](docs/ROADMAP.md), as [notas da v0.2.0](docs/RELEASE_0.2.0.md), a [resiliência v0.3](docs/RESILIENCE.md), o [isolamento de recursos](docs/RESOURCE_ISOLATION.md) e as [regras de contribuição](CONTRIBUTING.md).
 

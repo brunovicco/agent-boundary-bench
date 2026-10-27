@@ -23,10 +23,13 @@
   without fabricating missing resource samples.
 - Propagated and validated explicit host commit/dirty provenance for container campaigns whose
   images intentionally exclude the `.git` directory.
+- Committed the validated macOS Docker resource-isolation smoke: 24 rounds, 120/120 successful
+  executions and zero resource-sampling failures across generous and constrained profiles.
 
 Cross-host network faults, sustained isolated capacity evidence and advanced collector/exporter
-loss accounting remain in development. No resource-isolation benchmark result is claimed until
-the container campaigns are executed and their raw evidence is reviewed.
+loss accounting remain in development. The committed resource-isolation smoke validates wiring
+and preserves bounded observations; the repeated 180-round-per-profile campaign is still required
+before capacity or general causal claims.
 
 ## 0.2.0 — 2026-10-25
 

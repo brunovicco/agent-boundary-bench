@@ -13,14 +13,16 @@ A reproducible laboratory asking: **what changes when the same operation crosses
 
 **Active development: `0.3.0.dev0`.** Controlled delegation faults, bounded retries, stable
 idempotency IDs and service backpressure are implemented. The resource-isolation milestone adds
-a container treatment, fixed synthetic CPU/memory work and observed cgroup v2 evidence. This is not a
-published v0.3 release or sustained-capacity result. See [RESILIENCE.md](docs/RESILIENCE.md) and
-[RESOURCE_ISOLATION.md](docs/RESOURCE_ISOLATION.md).
+a container treatment, fixed synthetic CPU/memory work and observed cgroup v2 evidence. Both
+macOS Docker smoke profiles are validated and committed; this is not a published v0.3 release or
+sustained-capacity result. See [RESILIENCE.md](docs/RESILIENCE.md),
+[RESOURCE_ISOLATION.md](docs/RESOURCE_ISOLATION.md) and the
+[resource validation record](docs/validation/v0.3-resource-isolation.md).
 
 ## The experiment
 
 | Scenario | Delegation | Processes, excluding generator | Persistence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | A0 `local` | Typed Python port | Supervisor with embedded specialists | None |
 | A1 `http` | JSON over persistent HTTP/1.1 | Supervisor + one specialist worker | None |
 | A2 `a2a` | A2A 1.0 JSON-RPC, official SDK | Supervisor + one specialist worker | Immediate Message replies |
@@ -28,7 +30,7 @@ published v0.3 release or sustained-capacity result. See [RESILIENCE.md](docs/RE
 MCP is a separate treatment family for tool/resource access:
 
 | Scenario | Tool-access boundary | Processes, excluding generator | MCP transport |
-|---|---|---:|---|
+| --- | --- | ---: | --- |
 | T0 `mcp-inprocess` | Official SDK direct dispatcher | Supervisor with embedded tool server | In-process SDK facility |
 | T1 `mcp-stdio` | Official SDK client and child server | Supervisor + one tool worker | JSON-RPC over stdio |
 | T2 `mcp-streamable-http` | Official SDK client and remote server | Supervisor + one tool worker | Streamable HTTP |
@@ -193,6 +195,12 @@ no-resource-read condition, median round P50 was 3.110 ms for direct dispatch, 5
 for Streamable HTTP (five rounds, 50 samples per boundary). Adding two uncached resource reads
 per specialist increased all three observed medians. These short shared-host results validate
 the experiment path; they are not sustained-capacity or protocol-substitutability claims.
+
+The v0.3 container resource smoke completed 24/24 rounds and 120/120 requests with no errors,
+drops or sampling failures. In the single A2A CPU-plus-memory round, specialist throttling was
+observed under the 0.25-CPU treatment together with P50 1,053.340 ms, versus zero throttling and
+P50 104.917 ms at one CPU. Each condition has only one five-request round; this validates that
+the isolation treatment is measurable, not a portable 10× penalty or a capacity conclusion.
 
 - A modular monolith can avoid serialization/process boundaries; this alone says nothing about organizational autonomy or fault containment requirements.
 - A service boundary introduces operational components and failure modes. One-host latency does not quantify isolation, independent deployment or cross-region behavior.

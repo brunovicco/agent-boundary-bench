@@ -72,6 +72,42 @@ timeouts or drops. That validates the harness and functional paths at the tested
 not establish sustained capacity. MCP measures tool/resource access. It is not an A2A replacement
 or an agent-delegation ranking.
 
+## Container resource-isolation smoke
+
+The macOS Docker smoke used clean commit `d910a570`, one one-CPU/512-MiB harness, and separate
+remote specialists at either one CPU/512 MiB (generous) or 0.25 CPU/256 MiB (constrained).
+Each cell below is one round with five successful measured requests; therefore ratios are
+descriptive observations, not repeated effect estimates.
+
+| Scenario | CPU iterations | Memory | Generous P50 ms | Constrained P50 ms | Constrained/generous |
+|---|---:|---:|---:|---:|---:|
+| Local | 0 | 0 | 56.533 | 54.366 | 0.962× |
+| Local | 0 | 8 MiB | 67.395 | 74.210 | 1.101× |
+| Local | 25,000 | 0 | 92.858 | 87.996 | 0.948× |
+| Local | 25,000 | 8 MiB | 104.953 | 101.180 | 0.964× |
+| HTTP | 0 | 0 | 56.672 | 59.455 | 1.049× |
+| HTTP | 0 | 8 MiB | 70.520 | 255.853 | 3.628× |
+| HTTP | 25,000 | 0 | 89.443 | 138.088 | 1.544× |
+| HTTP | 25,000 | 8 MiB | 121.462 | 204.750 | 1.686× |
+| A2A | 0 | 0 | 66.167 | 61.970 | 0.937× |
+| A2A | 0 | 8 MiB | 73.649 | 76.197 | 1.035× |
+| A2A | 25,000 | 0 | 96.213 | 112.156 | 1.166× |
+| A2A | 25,000 | 8 MiB | 104.917 | 1,053.340 | 10.040× |
+
+Both profiles completed 60/60 offered executions and 12/12 warmups with no errors, timeouts,
+drops or sampling failures. The constrained A2A CPU-plus-memory round recorded 2.787763 seconds
+of specialist cgroup throttling versus zero in its generous match. Across all eight remote rounds,
+sampled specialist throttled-time deltas summed to 5.360728 seconds constrained versus 0.065566
+seconds generous. No memory pressure or OOM event was observed.
+
+The local arms retained the same harness cgroup in both profiles and provide a useful same-host
+control, but the remote architectures have a larger aggregate CPU budget than local. The smoke
+therefore demonstrates observable quota enforcement and motivates repeated treatment analysis;
+it does not establish a portable slowdown, a protocol ranking or a fixed-total-budget comparison.
+See the [raw data](../experiments/results/v030-resource-isolation-macos/),
+[derived report](v030-resource-isolation-macos/report.md) and
+[validation record](../docs/validation/v0.3-resource-isolation.md).
+
 ## Implications for design decisions
 
 A modular monolith can avoid boundary work for frequent small calls; this experiment offers
@@ -81,6 +117,7 @@ must be tested separately. The local-versus-remote medians here can inform a wor
 latency budget, not determine a topology alone. Hybrid designs deserve a measured evaluation
 at the intended call granularity and with a realistic useful workload.
 
-Before an article makes a capacity, recovery or isolation claim, execute longer isolated
-arrival sweeps, repeat the calibrated conditions, and add the v0.3 fault/resource treatments.
-The 1,620-round full matrices and 1,440-round MCP amplification matrix were not executed.
+Before an article makes a capacity, recovery or general isolation claim, execute longer isolated
+arrival sweeps and repeat the calibrated conditions. The v0.3 treatments and bounded smoke paths
+now exist, but the two 180-round resource-isolation profiles, 1,620-round base matrices and
+1,440-round MCP amplification matrix were not executed.

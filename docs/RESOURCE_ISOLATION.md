@@ -175,8 +175,22 @@ isolation is intrinsically faster. A future fixed-total-budget treatment require
 quota assignment.
 
 Smoke execution validates wiring and schema only. A defensible comparison needs both profiles,
-all planned repetitions, clean commits, no concurrent campaigns and complete raw data. No
-resource-isolation measurements are committed merely by implementing this milestone.
+all planned repetitions, clean commits, no concurrent campaigns and complete raw data.
+
+The committed macOS Docker smoke under
+`experiments/results/v030-resource-isolation-macos/` ran both 12-round profiles from clean commit
+`d910a57008c43636c38f4324dd398127f0f781de`. All 120 offered executions and 24 warmups succeeded;
+404/404 resource-sampling attempts succeeded. The image digest and observed cgroup v2 limits
+matched the declared treatments. Derived artifacts are under
+`reports/v030-resource-isolation-macos/`.
+
+In the single A2A round with 25,000 CPU iterations and an 8 MiB allocation, constrained-specialist
+P50 was 1,053.340 ms versus 104.917 ms under the generous profile; observed specialist throttling
+was 2.787763 seconds versus zero. Across the matched local control for that workload, P50 was
+101.180 ms versus 104.953 ms because both local arms retained the same one-CPU harness cgroup.
+These are five-request, one-round observations and may include order, host and Docker scheduling
+effects. They motivate the repeated matrix; they do not establish a portable slowdown factor or
+isolate transport as the cause. No memory pressure/OOM event was observed.
 
 ## Official references
 
