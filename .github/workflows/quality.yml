@@ -39,6 +39,8 @@ jobs:
         run: |
           export ABB_HOST_UID="$(id -u)"
           export ABB_HOST_GID="$(id -g)"
+          export ABB_COMMIT_SHA="$(git rev-parse HEAD)"
+          export ABB_GIT_DIRTY=false
           export ABB_IMAGE_DIGEST="$(docker image inspect agent-boundary-bench:0.3.0-dev0 --format '{{.Id}}')"
           export ABB_ISOLATION_LABEL=ci-generous
           export ABB_ISOLATION_OUTPUT=ci-resource-isolation-smoke
@@ -55,6 +57,8 @@ jobs:
             --harness-memory-bytes 536870912 \
             --specialist-memory-bytes 536870912 \
             --max-sampling-failure-rate 0 \
+            --expected-commit-sha "$ABB_COMMIT_SHA" \
+            --require-clean-worktree \
             --require-image-digest
       - if: always()
         run: docker compose logs && docker compose down --remove-orphans

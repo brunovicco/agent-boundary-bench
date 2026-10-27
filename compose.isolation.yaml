@@ -20,6 +20,8 @@ services:
       - /results/${ABB_ISOLATION_OUTPUT:-resource-isolation/smoke}
     environment:
       ABB_A2A_ENDPOINT: http://a2a:8100
+      ABB_COMMIT_SHA: ${ABB_COMMIT_SHA:-}
+      ABB_GIT_DIRTY: ${ABB_GIT_DIRTY:-}
       ABB_HTTP_ENDPOINT: http://http:8100
       ABB_IMAGE_DIGEST: ${ABB_IMAGE_DIGEST:-}
       ABB_ISOLATION_LABEL: ${ABB_ISOLATION_LABEL:-generous}

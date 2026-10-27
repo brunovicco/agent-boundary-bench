@@ -23,6 +23,10 @@ Completed means an admitted execution ended, including errors/timeouts. Offered 
 
 `image_hashes.application=null` means native execution without a measured application image. `network` distinguishes in-process, stdio and loopback HTTP topologies and records workers/pools/discovery. The official MCP stdio client does not expose its child PID; its specialist resource series is absent and the manifest states that limitation. Cgroup controls may be null when unavailable; host-reported memory/CPU are not silently substituted for enforced limits.
 
+Container images exclude `.git`; the isolation runner therefore receives the full host
+`ABB_COMMIT_SHA` and explicit `ABB_GIT_DIRTY` state. The validator can require both the expected
+SHA and a clean worktree. Missing values remain null rather than being inferred from an image tag.
+
 Schema v4 adds `cpu_iterations`, `memory_bytes`, `resource_sampling` and resource-sample schema v2. Cgroup fields
 include cumulative CPU usage/user/system/throttling counters, observed CPU quota in cores,
 memory current/peak/limit and `memory.events` counters. `max` limits remain null instead of being
@@ -31,8 +35,9 @@ The isolation label in `environment.resource_isolation` is requested-treatment m
 not evidence of an enforced limit. Remote sampling failures remain explicit in the manifest.
 `scripts/validate_isolation_results.py` verifies raw hashes/counts and rejects incomplete
 campaigns, sampling loss above the declared bound, fewer than two valid observations per role,
-absent cgroup v2 evidence, absent image provenance or limits that differ from the declared
-treatment. Loss within the explicit bound remains recorded and reported rather than imputed.
+absent cgroup v2 evidence, absent image provenance, a mismatched commit/dirty state or limits that
+differ from the declared treatment. Loss within the explicit bound remains recorded and reported
+rather than imputed.
 
 Schemas fix `extra=forbid` for raw records/config/manifest. Model validation occurs before reporting; raw sample/resource SHA-256 checks detect edits. The hashes establish file integrity relative to the manifest, not signed provenance or resistance to malicious rewriting of both files. Manifest hashes must be independently published if stronger evidence is required.
 

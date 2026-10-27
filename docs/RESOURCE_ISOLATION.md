@@ -55,6 +55,12 @@ docker compose -f compose.yaml -f compose.isolation.yaml config --quiet
 docker compose -f compose.yaml -f compose.isolation.yaml build
 export ABB_HOST_UID="$(id -u)"
 export ABB_HOST_GID="$(id -g)"
+export ABB_COMMIT_SHA="$(git rev-parse HEAD)"
+if test -z "$(git status --porcelain)"; then
+  export ABB_GIT_DIRTY=false
+else
+  export ABB_GIT_DIRTY=true
+fi
 export ABB_IMAGE_DIGEST="$(docker image inspect agent-boundary-bench:0.3.0-dev0 --format '{{.Id}}')"
 uv run python scripts/capture_container_environment.py \
   --output results/resource-isolation/environment.json
@@ -83,6 +89,8 @@ docker compose -f compose.yaml -f compose.isolation.yaml --profile isolation run
   --label generous --harness-cpus 1 --specialist-cpus 1 \
   --harness-memory-bytes 536870912 --specialist-memory-bytes 536870912 \
   --max-sampling-failure-rate 0 \
+  --expected-commit-sha "$ABB_COMMIT_SHA" \
+  --require-clean-worktree \
   --require-image-digest
 ```
 
@@ -100,7 +108,8 @@ docker compose -f compose.yaml -f compose.isolation.yaml --profile isolation \
 ```
 
 Use the same validator with `--label constrained --specialist-cpus 0.25` and
-`--specialist-memory-bytes 268435456`. Keep the harness expectations at one CPU and 512 MiB.
+`--specialist-memory-bytes 268435456`, plus the same expected-commit and clean-worktree checks.
+Keep the harness expectations at one CPU and 512 MiB.
 For the deliberately constrained profile, the validator defaults to a maximum 50% loss per role
 and round while still requiring at least two valid cgroup v2 observations. The exact failure
 counts remain in every manifest and in the validator output; they are never converted to samples.

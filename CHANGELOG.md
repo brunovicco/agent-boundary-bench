@@ -21,6 +21,8 @@
 - Added resource-isolation smoke/full matrices, integrity-checked reporting and ADR 0008.
 - Made control-plane sampling loss explicit and bounded so CPU starvation remains observable
   without fabricating missing resource samples.
+- Propagated and validated explicit host commit/dirty provenance for container campaigns whose
+  images intentionally exclude the `.git` directory.
 
 Cross-host network faults, sustained isolated capacity evidence and advanced collector/exporter
 loss accounting remain in development. No resource-isolation benchmark result is claimed until

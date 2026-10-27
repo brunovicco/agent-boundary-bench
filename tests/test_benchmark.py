@@ -9,7 +9,7 @@ from agent_boundary_bench.adapters.local import LocalDelegate
 from agent_boundary_bench.adapters.remote import RemoteDelegate
 from agent_boundary_bench.application.supervisor import Invocation, NullProbe, supervise
 from agent_boundary_bench.benchmark.models import Config, Manifest, ResourceSample
-from agent_boundary_bench.benchmark.runner import arrivals, has_timeout, one, run
+from agent_boundary_bench.benchmark.runner import arrivals, git_provenance, has_timeout, one, run
 from agent_boundary_bench.benchmark.runtime import runtime
 from agent_boundary_bench.domain.credit import AnalysisTask, evaluate, fixture
 from agent_boundary_bench.entrypoints.cli import campaign_configs, validate
@@ -67,6 +67,8 @@ async def test_raw_manifest_and_report(tmp_path: Path, monkeypatch: pytest.Monke
     # exported by a developer's interactive shell.
     monkeypatch.delenv("ABB_IMAGE_DIGEST", raising=False)
     monkeypatch.delenv("ABB_ISOLATION_LABEL", raising=False)
+    monkeypatch.delenv("ABB_COMMIT_SHA", raising=False)
+    monkeypatch.delenv("ABB_GIT_DIRTY", raising=False)
     directory = await run(Config(rate=5, duration=0.4, telemetry=True), tmp_path / "raw")
     manifest = Manifest.model_validate_json((directory / "manifest.json").read_text())
     assert manifest.offered == manifest.succeeded == 2
@@ -97,6 +99,20 @@ async def test_raw_manifest_and_report(tmp_path: Path, monkeypatch: pytest.Monke
         summarize(directory / "manifest.json")
     with pytest.raises(ValueError, match="no completed"):
         report(tmp_path / "empty", tmp_path / "empty-report")
+
+
+def test_explicit_container_git_provenance(monkeypatch: pytest.MonkeyPatch) -> None:
+    commit_sha = "A" * 40
+    monkeypatch.setenv("ABB_COMMIT_SHA", commit_sha)
+    monkeypatch.setenv("ABB_GIT_DIRTY", "false")
+    assert git_provenance() == (commit_sha.lower(), False)
+
+    monkeypatch.setenv("ABB_GIT_DIRTY", "invalid")
+    with pytest.raises(ValueError, match="ABB_GIT_DIRTY"):
+        git_provenance()
+    monkeypatch.setenv("ABB_COMMIT_SHA", "short")
+    with pytest.raises(ValueError, match="ABB_COMMIT_SHA"):
+        git_provenance()
 
 
 async def test_external_worker_resource_series_and_topology(

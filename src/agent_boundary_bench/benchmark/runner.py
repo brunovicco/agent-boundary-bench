@@ -6,6 +6,7 @@ import importlib.metadata
 import math
 import os
 import platform
+import re
 import shutil
 import subprocess  # nosec B404
 from datetime import UTC, datetime
@@ -46,6 +47,28 @@ def git_value(*args: str) -> str | None:
         return output.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
+
+
+def git_provenance() -> tuple[str | None, bool | None]:
+    """Use explicit container provenance, falling back to the current checkout."""
+    commit_sha = os.getenv("ABB_COMMIT_SHA") or git_value("rev-parse", "HEAD")
+    if commit_sha is not None and re.fullmatch(r"[0-9a-fA-F]{40}", commit_sha) is None:
+        raise ValueError("ABB_COMMIT_SHA must be a full 40-character hexadecimal SHA")
+
+    configured_dirty = os.getenv("ABB_GIT_DIRTY")
+    dirty: bool | None
+    if configured_dirty is not None and configured_dirty != "":
+        normalized = configured_dirty.casefold()
+        if normalized in {"false", "0"}:
+            dirty = False
+        elif normalized in {"true", "1"}:
+            dirty = True
+        else:
+            raise ValueError("ABB_GIT_DIRTY must be true, false, 1 or 0")
+    else:
+        status = git_value("status", "--porcelain")
+        dirty = bool(status) if status is not None else None
+    return commit_sha.lower() if commit_sha is not None else None, dirty
 
 
 def environment() -> dict[str, object]:
@@ -358,14 +381,14 @@ async def run(config: Config, output: Path) -> Path:
     sample_file.write_text("".join(s.model_dump_json() + "\n" for s in samples))
     resource_file = directory / "resources.jsonl"
     resource_file.write_text("".join(s.model_dump_json() + "\n" for s in resources))
-    dirty = git_value("status", "--porcelain")
+    commit_sha, git_dirty = git_provenance()
     manifest = Manifest(
         run_id=run_id,
         started_at=started_at,
         completed_at=datetime.now(UTC).isoformat(),
         config=config,
-        commit_sha=git_value("rev-parse", "HEAD"),
-        git_dirty=bool(dirty) if dirty is not None else None,
+        commit_sha=commit_sha,
+        git_dirty=git_dirty,
         lock_sha256=file_hash(Path("uv.lock")),
         python=platform.python_version(),
         packages={

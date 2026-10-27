@@ -20,6 +20,8 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--specialist-memory-bytes", type=int, required=True)
     parser.add_argument("--max-sampling-failure-rate", type=float, default=0.5)
     parser.add_argument("--require-image-digest", action="store_true")
+    parser.add_argument("--expected-commit-sha")
+    parser.add_argument("--require-clean-worktree", action="store_true")
     return parser.parse_args()
 
 
@@ -49,6 +51,12 @@ def validate(args: argparse.Namespace) -> None:
         manifest_path = directory / "manifest.json"
         summarize(manifest_path)
         manifest = Manifest.model_validate_json(manifest_path.read_text())
+        if args.expected_commit_sha and manifest.commit_sha != args.expected_commit_sha:
+            raise ValueError(
+                f"{run_id}: commit SHA {manifest.commit_sha!r} != {args.expected_commit_sha!r}"
+            )
+        if args.require_clean_worktree and manifest.git_dirty is not False:
+            raise ValueError(f"{run_id}: worktree provenance is not explicitly clean")
         isolation = manifest.environment.get("resource_isolation")
         label = isolation.get("label") if isinstance(isolation, dict) else None
         if label != args.label:
